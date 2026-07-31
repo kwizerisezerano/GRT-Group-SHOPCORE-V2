@@ -1,0 +1,555 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   SHOPCORE GLOBAL DESIGN TOKENS
+   ========================================================= */
+
+@layer base {
+  :root,
+  .light {
+    color-scheme: light;
+
+    --background: 210 20% 98%;
+    --foreground: 222 35% 12%;
+
+    --surface: 210 20% 96%;
+    --surface-foreground: 222 35% 12%;
+    --surface-elevated: 0 0% 100%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 35% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 35% 12%;
+
+    --primary: 230 88% 22%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 24% 95%;
+    --secondary-foreground: 222 35% 12%;
+
+    --muted: 214 20% 93%;
+    --muted-foreground: 215 14% 42%;
+
+    --accent: 187 96% 32%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 156 72% 34%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 95% 48%;
+    --warning-foreground: 222 35% 12%;
+
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 230 88% 32%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 230 88% 17%;
+    --sidebar-foreground: 216 35% 88%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 230 88% 18%;
+    --sidebar-accent: 228 70% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 228 58% 27%;
+    --sidebar-ring: 187 96% 40%;
+    --sidebar-muted: 224 34% 62%;
+
+    --chart-1: 230 88% 38%;
+    --chart-2: 156 72% 38%;
+    --chart-3: 32 95% 48%;
+    --chart-4: 0 72% 51%;
+    --chart-5: 270 70% 55%;
+
+    --font-sans:
+      "Inter",
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+
+    --font-mono:
+      "Roboto Mono",
+      ui-monospace,
+      SFMono-Regular,
+      Consolas,
+      "Liberation Mono",
+      monospace;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --background: 225 35% 7%;
+    --foreground: 214 32% 94%;
+
+    --surface: 224 30% 10%;
+    --surface-foreground: 214 32% 94%;
+    --surface-elevated: 223 27% 13%;
+
+    --card: 223 27% 12%;
+    --card-foreground: 214 32% 94%;
+
+    --popover: 223 27% 12%;
+    --popover-foreground: 214 32% 94%;
+
+    --primary: 220 88% 66%;
+    --primary-foreground: 225 35% 8%;
+
+    --secondary: 223 24% 17%;
+    --secondary-foreground: 214 32% 94%;
+
+    --muted: 223 22% 17%;
+    --muted-foreground: 215 18% 67%;
+
+    --accent: 187 80% 45%;
+    --accent-foreground: 225 35% 8%;
+
+    --destructive: 0 68% 57%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 156 65% 46%;
+    --success-foreground: 225 35% 8%;
+
+    --warning: 35 92% 55%;
+    --warning-foreground: 225 35% 8%;
+
+    --border: 223 18% 22%;
+    --input: 223 18% 22%;
+    --ring: 220 88% 66%;
+
+    --sidebar-background: 225 38% 6%;
+    --sidebar-foreground: 215 25% 78%;
+    --sidebar-primary: 220 88% 66%;
+    --sidebar-primary-foreground: 225 35% 8%;
+    --sidebar-accent: 223 25% 14%;
+    --sidebar-accent-foreground: 214 32% 94%;
+    --sidebar-border: 223 20% 16%;
+    --sidebar-ring: 187 80% 45%;
+    --sidebar-muted: 216 16% 58%;
+
+    --chart-1: 220 88% 66%;
+    --chart-2: 156 65% 46%;
+    --chart-3: 35 92% 55%;
+    --chart-4: 0 68% 57%;
+    --chart-5: 270 75% 68%;
+  }
+}
+
+/* =========================================================
+   GLOBAL BASE STYLES
+   ========================================================= */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    min-height: 100%;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    transition:
+      background-color 180ms ease,
+      color 180ms ease;
+  }
+
+  #root {
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  button,
+  select {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  ::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: hsl(var(--border));
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.4);
+  }
+}
+
+/* =========================================================
+   SHARED SHOPCORE COMPONENT CLASSES
+   ========================================================= */
+
+@layer components {
+  .font-data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-page {
+    min-height: 100%;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .app-surface {
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+
+  .app-surface-muted {
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--surface));
+    color: hsl(var(--surface-foreground));
+  }
+
+  .app-surface-elevated {
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--surface-elevated));
+    color: hsl(var(--foreground));
+    box-shadow:
+      0 1px 2px 0 rgb(15 23 42 / 0.05),
+      0 1px 3px 0 rgb(15 23 42 / 0.08);
+  }
+
+  .kpi-card {
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    padding: 1.25rem;
+    box-shadow:
+      0 1px 2px 0 rgb(15 23 42 / 0.04),
+      0 1px 3px 0 rgb(15 23 42 / 0.06);
+    transition:
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .kpi-card:hover {
+    box-shadow:
+      0 8px 24px rgb(15 23 42 / 0.08),
+      0 2px 6px rgb(15 23 42 / 0.06);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .page-title {
+    margin: 0;
+    color: hsl(var(--foreground));
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+    letter-spacing: -0.025em;
+  }
+
+  .page-description {
+    margin-top: 0.125rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: hsl(var(--foreground));
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .data-table th {
+    padding: 0.75rem 1rem;
+    background-color: hsl(var(--muted) / 0.5);
+    color: hsl(var(--muted-foreground));
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .data-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .data-table tbody tr {
+    transition: background-color 150ms ease;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: hsl(var(--muted) / 0.35);
+  }
+}
+
+/* =========================================================
+   THEME-AWARE UTILITIES
+   ========================================================= */
+
+@layer utilities {
+  .theme-transition {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      fill 180ms ease,
+      stroke 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .surface-background {
+    background-color: hsl(var(--background));
+  }
+
+  .surface-card {
+    background-color: hsl(var(--card));
+  }
+
+  .surface-muted {
+    background-color: hsl(var(--surface));
+  }
+
+  .surface-elevated {
+    background-color: hsl(var(--surface-elevated));
+  }
+
+  .text-theme-primary {
+    color: hsl(var(--foreground));
+  }
+
+  .text-theme-muted {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .border-theme {
+    border-color: hsl(var(--border));
+  }
+}
+
+/* =========================================================
+   LEGACY LIGHT-UTILITY THEME BRIDGE
+
+   Older operational screens predate the semantic color tokens above.
+   These mappings let them participate in the same persisted dark mode
+   without changing their layout or business behavior.
+   ========================================================= */
+
+@layer utilities {
+  .dark .bg-white {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-gray-50,
+  .dark [class*="bg-[#f4f6f9]"],
+  .dark [class*="bg-[#f6f7fb]"],
+  .dark [class*="bg-[#f8fafc]"],
+  .dark [class*="bg-[#cfd5db]"],
+  .dark [class*="bg-[#d7dce2]"] {
+    background-color: hsl(var(--background)) !important;
+  }
+
+  .dark .bg-slate-100,
+  .dark .bg-gray-100 {
+    background-color: hsl(var(--muted)) !important;
+  }
+
+  .dark .bg-slate-200,
+  .dark .bg-gray-200 {
+    background-color: hsl(var(--border)) !important;
+  }
+
+  .dark [class*="bg-white/"] {
+    background-color: hsl(var(--card) / 0.92) !important;
+  }
+
+  .dark [class*="bg-slate-50/"],
+  .dark [class*="bg-gray-50/"] {
+    background-color: hsl(var(--surface) / 0.9) !important;
+  }
+
+  .dark .text-slate-950,
+  .dark .text-slate-900,
+  .dark .text-slate-800,
+  .dark .text-gray-950,
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .dark .text-slate-700,
+  .dark .text-slate-600,
+  .dark .text-slate-500,
+  .dark .text-slate-400,
+  .dark .text-gray-700,
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .dark .border-slate-100,
+  .dark .border-slate-200,
+  .dark .border-slate-300,
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300,
+  .dark [class*="border-slate-200/"],
+  .dark [class*="border-gray-200/"] {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  .dark .from-white {
+    --tw-gradient-from: hsl(var(--card)) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(var(--card) / 0) var(--tw-gradient-to-position) !important;
+  }
+
+  .dark .from-slate-50,
+  .dark .via-slate-50 {
+    --tw-gradient-from: hsl(var(--surface)) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(var(--surface) / 0) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--surface)) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+  }
+
+  .dark .to-white {
+    --tw-gradient-to: hsl(var(--card)) var(--tw-gradient-to-position) !important;
+  }
+
+  .dark .to-slate-100 {
+    --tw-gradient-to: hsl(var(--muted)) var(--tw-gradient-to-position) !important;
+  }
+
+  .dark .bg-blue-50 {
+    background-color: rgb(37 99 235 / 0.14) !important;
+  }
+
+  .dark .bg-cyan-50 {
+    background-color: rgb(6 182 212 / 0.12) !important;
+  }
+
+  .dark .bg-emerald-50 {
+    background-color: rgb(16 185 129 / 0.12) !important;
+  }
+
+  .dark .bg-violet-50 {
+    background-color: rgb(124 58 237 / 0.14) !important;
+  }
+
+  .dark .bg-orange-50,
+  .dark .bg-amber-50 {
+    background-color: rgb(249 115 22 / 0.12) !important;
+  }
+
+  .dark .bg-rose-50,
+  .dark .bg-red-50 {
+    background-color: rgb(244 63 94 / 0.12) !important;
+  }
+
+  .dark .text-blue-700,
+  .dark .text-blue-800 {
+    color: rgb(147 197 253) !important;
+  }
+
+  .dark .text-cyan-700,
+  .dark .text-cyan-800 {
+    color: rgb(103 232 249) !important;
+  }
+
+  .dark .text-emerald-700,
+  .dark .text-emerald-800 {
+    color: rgb(110 231 183) !important;
+  }
+
+  .dark .text-violet-700,
+  .dark .text-violet-800 {
+    color: rgb(196 181 253) !important;
+  }
+
+  .dark .text-orange-700,
+  .dark .text-orange-800,
+  .dark .text-amber-700,
+  .dark .text-amber-800 {
+    color: rgb(253 186 116) !important;
+  }
+
+  .dark .text-rose-700,
+  .dark .text-rose-800,
+  .dark .text-red-700,
+  .dark .text-red-800 {
+    color: rgb(253 164 175) !important;
+  }
+
+  .dark .border-blue-200,
+  .dark .border-cyan-200,
+  .dark .border-emerald-200,
+  .dark .border-violet-200,
+  .dark .border-orange-200,
+  .dark .border-amber-200,
+  .dark .border-rose-200,
+  .dark .border-red-200 {
+    border-color: hsl(var(--border)) !important;
+  }
+}

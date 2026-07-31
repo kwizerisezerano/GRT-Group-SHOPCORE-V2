@@ -1,0 +1,47 @@
+{
+  "invoicePreview": {
+    "title": "Onyesho la Ankara",
+    "print": "Chapisha",
+    "savePdf": "Hifadhi PDF",
+    "billedTo": "Imetozwa kwa",
+    "subscriptionWorkspace": "Eneo la usajili la ShopCore",
+    "invoiceDate": "Tarehe ya Ankara",
+    "paidDate": "Tarehe ya Malipo",
+    "description": "Maelezo",
+    "quantity": "Kiasi",
+    "unitPrice": "Bei ya Kipimo",
+    "total": "Jumla",
+    "noItems": "Hakuna bidhaa za ankara zilizorekodiwa.",
+    "subtotal": "Jumla ndogo",
+    "discount": "Punguzo",
+    "tax": "Kodi",
+    "paymentInstructions": "Maelekezo ya Malipo",
+    "paymentInstructionsDescription": "Tafadhali kamilisha malipo kupitia njia rasmi za malipo za ShopCore Cloud. Wasiliana na msaada wa bili ikiwa ankara hii imelipwa lakini bado inaonyeshwa kuwa inasubiri.",
+    "generatedBy": "Imetengenezwa na Usimamizi wa Jukwaa la ShopCore Cloud",
+    "notPaid": "Haijalipwa"
+  },
+  "tenant360": {
+    "defaultSupportReason": "Msaada kwa mteja na utatuzi wa matatizo ya eneo la kazi.",
+    "activationNote": "Imewezeshwa kutoka wasifu wa Tenant 360.",
+    "suspensionReason": "Imesimamishwa kutoka wasifu wa Tenant 360.",
+    "loading": "Inapakia wasifu wa eneo la kazi...",
+    "loadFailed": "Imeshindwa kupakia wasifu wa eneo la kazi.",
+    "typeToConfirm": "Andika {{value}} ili kuthibitisha.",
+    "messages": {
+      "noteSaved": "Dokezo limehifadhiwa.",
+      "workspaceActivated": "Eneo la kazi limewezeshwa.",
+      "supportStarted": "Kipindi cha ufikiaji wa msaada kimeanza.",
+      "supportEnded": "Kipindi cha ufikiaji wa msaada kimekamilika.",
+      "statusUpdated": "Hali ya eneo la kazi imesasishwa."
+    },
+    "errors": {
+      "missingWorkspace": "Kitambulisho cha eneo la kazi hakipo.",
+      "noteRequired": "Andika dokezo kabla ya kuhifadhi.",
+      "noteSaveFailed": "Imeshindwa kuhifadhi dokezo.",
+      "activationFailed": "Uwezeshaji umeshindwa.",
+      "supportStartFailed": "Haikuwezekana kuanza ufikiaji wa msaada.",
+      "supportEndFailed": "Haikuwezekana kumaliza ufikiaji wa msaada.",
+      "actionFailed": "Kitendo kimeshindwa."
+    }
+  }
+}

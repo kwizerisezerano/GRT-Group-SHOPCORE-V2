@@ -1,0 +1,47 @@
+{
+  "invoicePreview": {
+    "title": "Aperçu de la facture",
+    "print": "Imprimer",
+    "savePdf": "Enregistrer en PDF",
+    "billedTo": "Facturé à",
+    "subscriptionWorkspace": "Espace d’abonnement ShopCore",
+    "invoiceDate": "Date de facture",
+    "paidDate": "Date de paiement",
+    "description": "Description",
+    "quantity": "Qté",
+    "unitPrice": "Prix unitaire",
+    "total": "Total",
+    "noItems": "Aucun article de facture enregistré.",
+    "subtotal": "Sous-total",
+    "discount": "Remise",
+    "tax": "Taxe",
+    "paymentInstructions": "Instructions de paiement",
+    "paymentInstructionsDescription": "Veuillez effectuer le paiement via les canaux approuvés de ShopCore Cloud. Contactez l’assistance facturation si cette facture a déjà été payée mais reste en attente.",
+    "generatedBy": "Généré par l’administration de la plateforme ShopCore Cloud",
+    "notPaid": "Non payée"
+  },
+  "tenant360": {
+    "defaultSupportReason": "Assistance client et dépannage de l’espace de travail.",
+    "activationNote": "Activé depuis le profil Tenant 360.",
+    "suspensionReason": "Suspendu depuis le profil Tenant 360.",
+    "loading": "Chargement du profil de l’espace...",
+    "loadFailed": "Échec du chargement du profil de l’espace.",
+    "typeToConfirm": "Saisissez {{value}} pour confirmer.",
+    "messages": {
+      "noteSaved": "Note enregistrée.",
+      "workspaceActivated": "Espace activé.",
+      "supportStarted": "Session d’assistance démarrée.",
+      "supportEnded": "Session d’assistance terminée.",
+      "statusUpdated": "Statut de l’espace mis à jour."
+    },
+    "errors": {
+      "missingWorkspace": "Identifiant de l’espace manquant.",
+      "noteRequired": "Saisissez une note avant l’enregistrement.",
+      "noteSaveFailed": "Échec de l’enregistrement de la note.",
+      "activationFailed": "Échec de l’activation.",
+      "supportStartFailed": "Impossible de démarrer l’accès d’assistance.",
+      "supportEndFailed": "Impossible de terminer l’accès d’assistance.",
+      "actionFailed": "Échec de l’action."
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "invoicePreview": {
+    "title": "Reba inyemezabuguzi",
+    "print": "Sohora ku rupapuro",
+    "savePdf": "Bika nka PDF",
+    "billedTo": "Yishyuzwa",
+    "subscriptionWorkspace": "Workspace y’ifatabuguzi rya ShopCore",
+    "invoiceDate": "Itariki y’inyemezabuguzi",
+    "paidDate": "Itariki yishyuriwe",
+    "description": "Ibisobanuro",
+    "quantity": "Ingano",
+    "unitPrice": "Igiciro cya kimwe",
+    "total": "Igiteranyo",
+    "noItems": "Nta bicuruzwa byanditswe ku nyemezabuguzi.",
+    "subtotal": "Igiteranyo mbere y’inyongera",
+    "discount": "Igabanyirizwa",
+    "tax": "Umusoro",
+    "paymentInstructions": "Amabwiriza y’ubwishyu",
+    "paymentInstructionsDescription": "Ishyura ukoresheje uburyo bwemewe bwa ShopCore Cloud. Menyesha ubufasha bw’ubwishyu niba waramaze kwishyura ariko inyemezabuguzi ikigaragara ko itegereje.",
+    "generatedBy": "Yakozwe n’ubuyobozi bwa ShopCore Cloud Platform",
+    "notPaid": "Ntiyishyuwe"
+  },
+  "tenant360": {
+    "defaultSupportReason": "Gufasha umukiriya no gukemura ibibazo bya workspace.",
+    "activationNote": "Yafunguwe muri Tenant 360.",
+    "suspensionReason": "Yahagaritswe muri Tenant 360.",
+    "loading": "Umwirondoro wa workspace urimo gutangira...",
+    "loadFailed": "Umwirondoro wa workspace ntiwashoboye gutangira.",
+    "typeToConfirm": "Andika {{value}} kugira ngo wemeze.",
+    "messages": {
+      "noteSaved": "Icyitonderwa cyabitswe.",
+      "workspaceActivated": "Workspace yafunguwe.",
+      "supportStarted": "Igihe cy’ubufasha cyatangiye.",
+      "supportEnded": "Igihe cy’ubufasha cyarangiye.",
+      "statusUpdated": "Imiterere ya workspace yavuguruwe."
+    },
+    "errors": {
+      "missingWorkspace": "ID ya workspace irabuze.",
+      "noteRequired": "Andika icyitonderwa mbere yo kubika.",
+      "noteSaveFailed": "Icyitonderwa nticyashoboye kubikwa.",
+      "activationFailed": "Gufungura workspace byanze.",
+      "supportStartFailed": "Ubufasha ntibwashoboye gutangira.",
+      "supportEndFailed": "Ubufasha ntibwashoboye kurangira.",
+      "actionFailed": "Igikorwa cyanze."
+    }
+  }
+}

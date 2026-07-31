@@ -1,0 +1,776 @@
+// ShopCore MySQL schema.
+//
+// Reconstructed from the Supabase/Postgres migrations in supabase/migrations/
+// and, for tables that only ever existed on the live Supabase project (never
+// committed as a migration), from the SQL bodies of the Postgres RPC
+// functions and edge functions that reference them. Columns seen directly in
+// an `insert`/`select` statement in that source SQL are confident; columns
+// marked "guessed" below were not directly observed and are a best-effort
+// reconstruction pending validation against real usage.
+//
+// Conventions:
+//   uuid                        -> String @db.Char(36), app/Prisma-generated v4 uuid()
+//   text                        -> @db.Text (unbounded) or VarChar (bounded/indexed)
+//   numeric                     -> Decimal @db.Decimal(14, 2)
+//   timestamp with time zone    -> DateTime (stored as UTC by convention; MySQL has no true timestamptz)
+//   jsonb                       -> Json
+//   Postgres RLS / auth.uid()   -> no MySQL equivalent; enforced in application code via
+//                                  req.user.tenantId + explicit `where: { tenantId }` on every query.
+//   tenant_id nullable in the   -> tightened to NOT NULL here where every real row always has one
+//   source (RLS did enforcement)  (RLS is gone, so the column itself must not silently allow orphans)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================================
+// Auth / tenant bootstrap (Phase 1 — fully implemented with service code)
+// =========================================================================
+
+model User {
+  id              String    @id @default(uuid()) @db.Char(36)
+  email           String    @unique @db.VarChar(191)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  displayName     String?   @map("display_name") @db.VarChar(191)
+  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
+  // Free-form signup metadata (business name/phone/location/type/team size, etc.)
+  // captured at signup time, before a tenant exists. Not the source of truth
+  // once a tenant/profile is created — mirrors Supabase's raw_user_meta_data
+  // role for continuity only.
+  metadata        Json?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  profile             Profile?
+  refreshTokens        RefreshToken[]
+  passwordResetTokens  PasswordResetToken[]
+  tenantMemberships    TenantMember[]
+  ownedTenants          Tenant[]        @relation("TenantOwner")
+  userRoles             UserRole[]
+  workspaceMemberships  WorkspaceMember[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  tokenHash String    @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @map("user_id") @db.Char(36)
+  tokenHash String    @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Profile {
+  id          String   @id @db.Char(36) // shares PK with User (1:1) — matches Supabase's profiles.id = auth.users.id
+  tenantId    String?  @map("tenant_id") @db.Char(36) // nullable: not set until a workspace/tenant exists
+  // display_name/phone are AES-encrypted client-side (src/lib/encryption.ts)
+  // before ever reaching this backend — stored here as opaque ciphertext,
+  // sized generously to comfortably hold the ciphertext+IV blob.
+  displayName String?  @map("display_name") @db.VarChar(512)
+  phone       String?  @db.VarChar(512)
+  language    String   @default("en") @db.VarChar(8) // en | fr | rw | sw
+  planId      String?  @map("plan_id") @db.Char(36)
+  avatarUrl   String?  @map("avatar_url") @db.VarChar(512)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [id], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  qaAuditLogs      QaAuditLog[]
+  qaFilterPresets  QaFilterPreset[]     @relation("QaFilterPresetCreatedBy")
+  qaIsolationLeaks QaIsolationLeak[]    @relation("QaIsolationLeakDetectedBy")
+  qaRuns           QaRun[]              @relation("QaRunCreatedBy")
+  qaScreenshots    QaScreenshot[]       @relation("QaScreenshotCreatedBy")
+  staff            Staff[]
+
+  @@index([tenantId])
+  @@map("profiles")
+}
+
+model Tenant {
+  id                  String    @id @default(uuid()) @db.Char(36)
+  name                String    @db.VarChar(191)
+  ownerId             String?   @map("owner_id") @db.Char(36)
+  contactEmail        String?   @map("contact_email") @db.VarChar(191)
+  slug                String?   @db.VarChar(191)
+  logoUrl             String?   @map("logo_url") @db.VarChar(512)
+  brandColor          String?   @default("#2563eb") @map("brand_color") @db.VarChar(16)
+  // V2's live `tenants` table doesn't actually have these columns even
+  // though AuthContext/offlineAuth/Login all query them via tenants!inner(...)
+  // - a real pre-existing schema-drift bug on that branch. Fixed here rather
+  // than reproduced, since MySQL is a clean start.
+  subscriptionPlan    String?   @map("subscription_plan") @db.VarChar(64)
+  subscriptionStatus  String?   @map("subscription_status") @db.VarChar(32)
+  paymentStatus       String?   @map("payment_status") @db.VarChar(32)
+  trialStatus         String?   @map("trial_status") @db.VarChar(32)
+  trialEndsAt         DateTime? @map("trial_ends_at")
+  onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  workspaceStatus     String?   @map("workspace_status") @db.VarChar(32)
+  billingCycle        String?   @map("billing_cycle") @db.VarChar(16)
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  owner   User?          @relation("TenantOwner", fields: [ownerId], references: [id])
+  members TenantMember[]
+  profiles Profile[]
+  userRoles UserRole[]
+  subscriptions TenantSubscription[]
+  moduleEntitlements PlatformTenantModuleEntitlement[]
+
+  brands           Brand[]
+  categories       Category[]
+  creditedItems    CreditedItem[]
+  customers        Customer[]
+  expenses         Expense[]
+  expiredProducts  ExpiredProduct[]
+  products         Product[]
+  purchases        Purchase[]
+  qaAuditLogs      QaAuditLog[]
+  qaFilterPresets  QaFilterPreset[]
+  qaIsolationLeaks QaIsolationLeak[]
+  qaRuns           QaRun[]
+  qaScreenshots    QaScreenshot[]
+  qaSettings       QaSetting[]
+  saleItems        SaleItem[]
+  suppliers        Supplier[]
+  staff            Staff[]
+
+  @@map("tenants")
+}
+
+model TenantMember {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  userId    String   @map("user_id") @db.Char(36)
+  role      String   @default("member") @db.VarChar(32)
+  isDefault Boolean  @default(true) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // The source Postgres migration's own comments document a live bug where
+  // an ON CONFLICT clause targeted a unique constraint that never existed on
+  // this table. Add the real constraint here.
+  @@unique([userId, tenantId], name: "tenant_members_user_tenant_unique")
+  @@map("tenant_members")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String   @map("user_id") @db.Char(36)
+  tenantId  String?  @map("tenant_id") @db.Char(36)
+  role      String   @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId, role], name: "user_roles_unique")
+  @@map("user_roles")
+}
+
+model Workspace {
+  id        String   @id @default(uuid()) @db.Char(36)
+  name      String   @db.VarChar(191)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members WorkspaceMember[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(uuid()) @db.Char(36)
+  userId      String   @map("user_id") @db.Char(36)
+  workspaceId String   @map("workspace_id") @db.Char(36)
+  role        String   @default("owner") @db.VarChar(32)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("workspace_members")
+}
+
+// =========================================================================
+// Billing / subscriptions.
+//
+// V2's actual schema (supabase/migrations/20260529073325_remote_schema.sql)
+// has no subscription_invoices/invoice_items/subscription_history/
+// subscription_events tables at all (those were main-branch-only) - its
+// billing model is just tenant_subscriptions + payment_methods, with a
+// built-in approval workflow (approval_status/requested_*/approved_*
+// columns, driven by approve_subscription()/reject_subscription() RPCs).
+//
+// Per the migration decision for this pass: the approval workflow's
+// SERVICE logic (admin approve/reject endpoints, the "pending approval"
+// login redirect) is deferred to a later phase, matching how billing/
+// platform-admin CRUD is deferred on the main branch. The schema below
+// still carries the approval columns so that later phase is additive, not
+// a migration rewrite - new subscriptions are just created pre-approved
+// (approvalStatus: "approved") until that phase builds the real gate.
+// =========================================================================
+
+model SubscriptionPlan {
+  id        String   @id @default(uuid()) @db.Char(36)
+  code      String   @unique @db.VarChar(32) // starter | professional | business_plus | enterprise_pro
+  name      String   @db.VarChar(191)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  prices SubscriptionPlanPrice[]
+
+  @@map("subscription_plans")
+}
+
+model SubscriptionPlanPrice {
+  id              String   @id @default(uuid()) @db.Char(36)
+  planCode        String   @map("plan_code") @db.VarChar(32)
+  billingCycle    String   @map("billing_cycle") @db.VarChar(16) // monthly | six_months | annual
+  billingMonths   Int?     @map("billing_months") // guessed
+  listPrice       Decimal  @map("list_price") @db.Decimal(14, 2)
+  finalPrice      Decimal  @map("final_price") @db.Decimal(14, 2)
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(5, 2) // guessed
+  currency        String   @default("RWF") @db.VarChar(8)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  plan SubscriptionPlan @relation(fields: [planCode], references: [code])
+
+  @@unique([planCode, billingCycle], name: "plan_price_unique")
+  @@map("subscription_plan_prices")
+}
+
+// Read-optimized denormalized catalog consumed by the public signup/pricing
+// UI (`public_subscription_plan_catalog` in the source). Modeled as a real
+// table (populated by the seed script alongside SubscriptionPlan/Price)
+// rather than a MySQL view, since it needs to carry nested JSON.
+model PublicSubscriptionPlanCatalog {
+  id       String  @id @default(uuid()) @db.Char(36)
+  code     String  @unique @db.VarChar(32)
+  name     String  @db.VarChar(191)
+  isActive Boolean @default(true) @map("is_active")
+  isPublic Boolean @default(true) @map("is_public")
+  features Json?
+  limits   Json?
+  prices   Json?
+
+  @@map("public_subscription_plan_catalog")
+}
+
+model PaymentMethod {
+  id                String   @id @default(uuid()) @db.Char(36)
+  code              String   @unique @db.VarChar(32) // e.g. mobile_money_mtn, card, bank_transfer
+  name              String   @db.VarChar(191)
+  description       String?  @db.Text
+  provider          String?  @db.VarChar(64)
+  isActive          Boolean  @default(true) @map("is_active")
+  displayOrder      Int      @default(0) @map("display_order")
+  supportsRecurring Boolean  @default(false) @map("supports_recurring")
+  supportsOneTime   Boolean  @default(true) @map("supports_one_time")
+  currency          String   @default("RWF") @db.VarChar(8)
+  config            Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  subscriptions TenantSubscription[]
+
+  @@map("payment_methods")
+}
+
+model TenantSubscription {
+  id                     String    @id @default(uuid()) @db.Char(36)
+  tenantId               String    @map("tenant_id") @db.Char(36)
+  userId                 String?   @map("user_id") @db.Char(36)
+  planCode               String    @map("plan_code") @db.VarChar(32)
+  billingCycle           String    @map("billing_cycle") @db.VarChar(16)
+  billingMonths          Int?      @map("billing_months")
+  subscriptionAmount     Decimal?  @map("subscription_amount") @db.Decimal(14, 2)
+  subscriptionCurrency   String?   @default("RWF") @map("subscription_currency") @db.VarChar(8)
+  subscriptionDiscountPercent Decimal? @map("subscription_discount_percent") @db.Decimal(5, 2)
+  paymentMethodCode      String?   @map("payment_method_code") @db.VarChar(32)
+  subscriptionStatus     String    @default("active") @map("subscription_status") @db.VarChar(32)
+  paymentStatus          String    @default("paid") @map("payment_status") @db.VarChar(32)
+  // Approval-workflow columns, carried in the schema now but not yet
+  // enforced by any service code - see the section comment above.
+  approvalStatus         String    @default("approved") @map("approval_status") @db.VarChar(16)
+  requestedBy            String?   @map("requested_by") @db.Char(36)
+  requestedAt            DateTime? @map("requested_at")
+  approvedBy             String?   @map("approved_by") @db.Char(36)
+  approvedAt             DateTime? @map("approved_at")
+  rejectionReason        String?   @map("rejection_reason") @db.Text
+  activatedAt            DateTime? @map("activated_at")
+  expiresAt              DateTime? @map("expires_at")
+  currentPeriodStart     DateTime? @map("current_period_start")
+  currentPeriodEnd       DateTime? @map("current_period_end")
+  trialEndsAt            DateTime? @map("trial_ends_at")
+  gracePeriodEndsAt      DateTime? @map("grace_period_ends_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodCode], references: [code])
+
+  @@index([tenantId])
+  @@map("tenant_subscriptions")
+}
+
+model PlatformTenantModuleEntitlement {
+  id            String    @id @default(uuid()) @db.Char(36)
+  tenantId      String    @map("tenant_id") @db.Char(36)
+  moduleKey     String    @map("module_key") @db.VarChar(64)
+  moduleName    String?   @map("module_name") @db.VarChar(191)
+  status        String?   @db.VarChar(32)
+  seatsIncluded Int?      @map("seats_included")
+  seatsUsed     Int?      @map("seats_used")
+  usageCount    Int?      @map("usage_count")
+  lastUsedAt    DateTime? @map("last_used_at")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("platform_tenant_module_entitlements")
+}
+
+// =========================================================================
+// Core ERP/POS tables — schema stubs only in Phase 1 (no service code yet,
+// built out module-by-module starting Phase 2). Included now so the initial
+// migration produces the full target schema in one file.
+// =========================================================================
+
+model Brand {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  name      String   @db.VarChar(191)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("brands")
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Char(36)
+  tenantId    String   @map("tenant_id") @db.Char(36)
+  name        String   @db.VarChar(191)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("categories")
+}
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  name      String   @db.VarChar(191)
+  phone     String?  @db.VarChar(32)
+  email     String?  @db.VarChar(191)
+  address   String?  @db.Text
+  userId    String?  @map("user_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+model Product {
+  id              String    @id @default(uuid()) @db.Char(36)
+  tenantId        String    @map("tenant_id") @db.Char(36)
+  name            String    @db.VarChar(191)
+  barcode         String?   @db.VarChar(64)
+  sku             String?   @db.VarChar(64)
+  category        String?   @db.VarChar(191)
+  categoryId      String?   @map("category_id") @db.Char(36)
+  categoryName    String?   @map("category_name") @db.VarChar(191)
+  brand           String?   @db.VarChar(191)
+  brandId         String?   @map("brand_id") @db.Char(36)
+  supplierId      String?   @map("supplier_id") @db.Char(36)
+  costPrice       Decimal   @default(0) @map("cost_price") @db.Decimal(14, 2)
+  sellingPrice    Decimal   @default(0) @map("selling_price") @db.Decimal(14, 2)
+  stock           Int       @default(0)
+  stockQuantity   Int       @default(0) @map("stock_quantity")
+  minStock        Int       @default(0) @map("min_stock")
+  minStockLevel   Int       @default(5) @map("min_stock_level")
+  taxRate         Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  imageUrl        String?   @map("image_url") @db.VarChar(512)
+  description     String?   @db.Text
+  unit            String?   @default("pcs") @db.VarChar(32)
+  status          String?   @default("active") @db.VarChar(32)
+  expiryDate      DateTime? @map("expiry_date") @db.Date
+  userId          String?   @map("user_id") @db.Char(36)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creditedItems   CreditedItem[]
+  expiredProducts ExpiredProduct[]
+  purchaseItems   PurchaseItem[]
+  saleItems       SaleItem[]
+
+  @@index([tenantId])
+  @@map("products")
+}
+
+model Customer {
+  id           String   @id @default(uuid()) @db.Char(36)
+  tenantId     String   @map("tenant_id") @db.Char(36)
+  name         String   @db.VarChar(191)
+  phone        String?  @db.VarChar(32)
+  email        String?  @db.VarChar(191)
+  address      String?  @db.Text
+  totalSpent   Decimal  @default(0) @map("total_spent") @db.Decimal(14, 2)
+  loyaltyPoints Int     @default(0) @map("loyalty_points")
+  status       String?  @default("active") @db.VarChar(32)
+  userId       String?  @map("user_id") @db.Char(36)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creditedItems CreditedItem[]
+
+  @@index([tenantId])
+  @@map("customers")
+}
+
+model Sale {
+  id            String   @id @default(uuid()) @db.Char(36)
+  tenantId      String   @map("tenant_id") @db.Char(36)
+  invoiceNo     String   @map("invoice_no") @db.VarChar(64)
+  saleNo        String?  @map("sale_no") @db.VarChar(64)
+  customerName  String?  @map("customer_name") @db.VarChar(191)
+  items         Int      @default(0)
+  subtotal      Decimal  @default(0) @db.Decimal(14, 2)
+  tax           Decimal  @default(0) @db.Decimal(14, 2)
+  discount      Decimal  @default(0) @db.Decimal(14, 2)
+  total         Decimal  @default(0) @db.Decimal(14, 2)
+  paid          Decimal  @default(0) @db.Decimal(14, 2)
+  due           Decimal  @default(0) @db.Decimal(14, 2)
+  paymentMethod String?  @map("payment_method") @db.VarChar(32)
+  status        String?  @default("completed") @db.VarChar(32)
+  branch        String?  @db.VarChar(191)
+  cashier       String?  @db.VarChar(191)
+  notes         String?  @db.Text
+  userId        String?  @map("user_id") @db.Char(36)
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  saleItems     SaleItem[]
+  creditedItems CreditedItem[]
+
+  @@index([tenantId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String   @id @default(uuid()) @db.Char(36)
+  tenantId    String   @map("tenant_id") @db.Char(36)
+  saleId      String   @map("sale_id") @db.Char(36)
+  productId   String?  @map("product_id") @db.Char(36)
+  productName String   @map("product_name") @db.VarChar(191)
+  sku         String?  @db.VarChar(64)
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0) @map("unit_price") @db.Decimal(14, 2)
+  discount    Decimal  @default(0) @db.Decimal(14, 2)
+  tax         Decimal  @default(0) @db.Decimal(14, 2)
+  subtotal    Decimal  @default(0) @db.Decimal(14, 2)
+  total       Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([saleId])
+  @@map("sale_items")
+}
+
+model CreditedItem {
+  id               String    @id @default(uuid()) @db.Char(36)
+  tenantId         String    @map("tenant_id") @db.Char(36)
+  customerId       String?   @map("customer_id") @db.Char(36)
+  saleId           String?   @map("sale_id") @db.Char(36)
+  productId        String?   @map("product_id") @db.Char(36)
+  quantity         Int       @default(1)
+  unitPrice        Decimal   @default(0) @map("unit_price") @db.Decimal(14, 2)
+  total            Decimal   @default(0) @db.Decimal(14, 2)
+  amountPaid       Decimal   @default(0) @map("amount_paid") @db.Decimal(14, 2)
+  remainingBalance Decimal   @default(0) @map("remaining_balance") @db.Decimal(14, 2)
+  dueDate          DateTime? @map("due_date")
+  status           String?   @default("pending") @db.VarChar(32)
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  sale     Sale?     @relation(fields: [saleId], references: [id])
+  product  Product?  @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@map("credited_items")
+}
+
+model Purchase {
+  id            String   @id @default(uuid()) @db.Char(36)
+  tenantId      String   @map("tenant_id") @db.Char(36)
+  supplierId    String?  @map("supplier_id") @db.Char(36)
+  supplierName  String?  @map("supplier_name") @db.VarChar(191)
+  purchaseNo    String?  @map("purchase_no") @db.VarChar(64)
+  total         Decimal  @default(0) @db.Decimal(14, 2)
+  subtotal      Decimal  @default(0) @db.Decimal(14, 2)
+  tax           Decimal  @default(0) @db.Decimal(14, 2)
+  discount      Decimal  @default(0) @db.Decimal(14, 2)
+  status        String?  @default("completed") @db.VarChar(32)
+  paymentStatus String?  @default("paid") @map("payment_status") @db.VarChar(32)
+  notes         String?  @db.Text
+  userId        String?  @map("user_id") @db.Char(36)
+  purchaseDate  DateTime @default(now()) @map("purchase_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier  Supplier?      @relation(fields: [supplierId], references: [id])
+  items     PurchaseItem[]
+
+  @@index([tenantId])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid()) @db.Char(36)
+  tenantId    String   @map("tenant_id") @db.Char(36)
+  purchaseId  String   @map("purchase_id") @db.Char(36)
+  productId   String?  @map("product_id") @db.Char(36)
+  productName String?  @map("product_name") @db.VarChar(191)
+  sku         String?  @db.VarChar(64)
+  quantity    Int      @default(1)
+  unitCost    Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 2)
+  subtotal    Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+model ExpiredProduct {
+  id             String    @id @default(uuid()) @db.Char(36)
+  tenantId       String    @map("tenant_id") @db.Char(36)
+  productId      String?   @map("product_id") @db.Char(36)
+  quantity       Int       @default(0)
+  expiryDate     DateTime? @map("expiry_date") @db.Date
+  status         String?   @default("expired") @db.VarChar(32)
+  disposalMethod String?   @map("disposal_method") @db.VarChar(191)
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@map("expired_products")
+}
+
+model StockMovement {
+  id             String   @id @default(uuid()) @db.Char(36)
+  // Source Postgres column is `text`, not `uuid`, and this table has no
+  // tenant_id/FKs at all — preserved faithfully rather than "fixed", since
+  // that redesign belongs to whichever phase actually builds this module out.
+  productId      String?  @map("product_id") @db.VarChar(191)
+  productName    String?  @map("product_name") @db.VarChar(191)
+  movementType   String   @map("movement_type") @db.VarChar(32)
+  quantityChange Int      @map("quantity_change")
+  stockBefore    Int?     @map("stock_before")
+  stockAfter     Int?     @map("stock_after")
+  reference      String?  @db.VarChar(191)
+  referenceId    String?  @map("reference_id") @db.VarChar(191)
+  notes          String?  @db.Text
+  userId         String?  @map("user_id") @db.Char(36)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("stock_movements")
+}
+
+model Expense {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  title     String   @db.VarChar(191)
+  amount    Decimal  @default(0) @db.Decimal(14, 2)
+  category  String?  @db.VarChar(191)
+  notes     String?  @db.Text
+  userId    String?  @map("user_id") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("expenses")
+}
+
+model Staff {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  profileId String?  @map("profile_id") @db.Char(36)
+  position  String?  @db.VarChar(191)
+  salary    Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  @@index([tenantId])
+  @@map("staff")
+}
+
+// --- Internal QA/audit subsystem -----------------------------------------
+
+model QaRun {
+  id          String    @id @default(uuid()) @db.Char(36)
+  tenantId    String    @map("tenant_id") @db.Char(36)
+  status      String?   @default("pending") @db.VarChar(32)
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdBy   String?   @map("created_by") @db.Char(36)
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator     Profile?       @relation("QaRunCreatedBy", fields: [createdBy], references: [id])
+  screenshots QaScreenshot[]
+
+  @@index([tenantId])
+  @@map("qa_runs")
+}
+
+model QaScreenshot {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  qaRunId   String   @map("qa_run_id") @db.Char(36)
+  imageUrl  String   @map("image_url") @db.VarChar(512)
+  label     String?  @db.VarChar(191)
+  createdBy String?  @map("created_by") @db.Char(36)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  qaRun   QaRun   @relation(fields: [qaRunId], references: [id], onDelete: Cascade)
+  creator Profile? @relation("QaScreenshotCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([qaRunId])
+  @@map("qa_screenshots")
+}
+
+model QaAuditLog {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tenantId  String   @map("tenant_id") @db.Char(36)
+  userId    String?  @map("user_id") @db.Char(36)
+  action    String   @db.VarChar(191)
+  entity    String?  @db.VarChar(191)
+  entityId  String?  @map("entity_id") @db.Char(36)
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   Profile? @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@map("qa_audit_log")
+}
+
+model QaFilterPreset {
+  id        String    @id @default(uuid()) @db.Char(36)
+  tenantId  String    @map("tenant_id") @db.Char(36)
+  name      String    @db.VarChar(191)
+  filters   Json?
+  createdBy String?   @map("created_by") @db.Char(36)
+  userId    String?   @map("user_id") @db.Char(36)
+  action    String?   @db.VarChar(191)
+  filterUser String?  @map("filter_user") @db.VarChar(191)
+  fromDate  DateTime? @map("from_date")
+  toDate    DateTime? @map("to_date")
+  search    String?   @db.VarChar(255)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator Profile? @relation("QaFilterPresetCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@map("qa_filter_presets")
+}
+
+model QaIsolationLeak {
+  id             String   @id @default(uuid()) @db.Char(36)
+  tenantId       String   @map("tenant_id") @db.Char(36)
+  detectedBy     String?  @map("detected_by") @db.Char(36)
+  description    String?  @db.Text
+  severity       String?  @default("low") @db.VarChar(16)
+  resolved       Boolean  @default(false)
+  runId          String?  @map("run_id") @db.Char(36)
+  tableName      String?  @map("table_name") @db.VarChar(191)
+  rowId          String?  @map("row_id") @db.Char(36)
+  expectedTenant String?  @map("expected_tenant") @db.Char(36)
+  actualTenant   String?  @map("actual_tenant") @db.Char(36)
+  context        Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  detector Profile? @relation("QaIsolationLeakDetectedBy", fields: [detectedBy], references: [id])
+
+  @@index([tenantId])
+  @@map("qa_isolation_leaks")
+}
+
+model QaSetting {
+  id                       String   @id @default(uuid()) @db.Char(36)
+  tenantId                 String   @map("tenant_id") @db.Char(36)
+  autoCapture              Boolean  @default(false) @map("auto_capture")
+  screenshotRetentionDays  Int      @default(30) @map("screenshot_retention_days")
+  isolationEnabled         Boolean  @default(true) @map("isolation_enabled")
+  webhookUrl               String?  @map("webhook_url") @db.VarChar(512)
+  webhookEnabled           Boolean  @default(false) @map("webhook_enabled")
+  captureScreenshots       Boolean  @default(true) @map("capture_screenshots")
+  diffThreshold            Decimal  @default(0.1) @map("diff_threshold") @db.Decimal(5, 2)
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("qa_settings")
+}
