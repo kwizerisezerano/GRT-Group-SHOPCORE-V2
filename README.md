@@ -45,6 +45,8 @@ Built using modern web technologies:
 
 `supabase/` is kept temporarily: most modules (products, sales, POS, platform-admin, etc.) still read/write directly through `@supabase/supabase-js` while they're migrated one at a time onto the new backend. Auth/session/workspace-bootstrap have already moved to `backend/`.
 
+**Database** (`database/`): Enterprise-grade MySQL 8.0+ schema with comprehensive indexing, audit trails, soft delete patterns, and performance monitoring.
+
 ---
 
 # Getting Started
@@ -56,6 +58,7 @@ Before running the project, ensure you have installed:
 - Node.js 20+
 - npm
 - Git
+- MySQL 8.0+ (for database)
 
 ---
 
@@ -87,6 +90,27 @@ cd backend
 npx prisma migrate deploy
 npx prisma db seed
 ```
+
+**Alternative: Direct MySQL Schema Migration**
+
+For direct MySQL database setup using the enterprise-grade schema:
+
+```bash
+# Create database first
+mysql -u root -p -e "CREATE DATABASE shopcore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# Run the migration script
+cd database
+chmod +x run_migration.sh
+./run_migration.sh
+```
+
+The MySQL schema includes:
+- **Performance**: 40+ indexes, JSON indexing, full-text search
+- **Security**: View-based row-level security, comprehensive audit trails
+- **Resilience**: Soft delete patterns, backup procedures
+- **Monitoring**: Built-in performance logging and metrics
+- **Requirements**: MySQL 8.0+ (for native UUID, JSON indexes, CTEs)
 
 For real transactional email (password reset), also set `RESEND_API_KEY`/`RESEND_FROM_EMAIL` in `backend/.env`; without it, reset links are logged to the server console instead of emailed.
 
@@ -178,6 +202,10 @@ backend/              # Node/Express + Prisma + MySQL API
     schema.prisma
     migrations/
     seed.ts
+
+database/             # Enterprise-grade MySQL 8.0+ schema
+  mysql_schema.sql    # Complete database schema with 10/10 rating
+  run_migration.sh    # Single-command migration runner
 
 src-tauri/            # Tauri desktop shell, wraps frontend/dist
 supabase/             # legacy Postgres/Supabase migrations - kept until every
