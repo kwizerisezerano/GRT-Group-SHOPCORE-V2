@@ -11,6 +11,17 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().default(30),
   BCRYPT_COST: z.coerce.number().default(10),
+
+  // PII protection (lib/crypto.ts). Both are 32-byte keys as 64 hex chars,
+  // generated with `openssl rand -hex 32`, and must differ from each other.
+  // No defaults on purpose: booting with a fallback key would silently write
+  // data nobody can decrypt later.
+  ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY must be 64 hex characters (openssl rand -hex 32)"),
+  BLIND_INDEX_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "BLIND_INDEX_KEY must be 64 hex characters (openssl rand -hex 32)"),
   FRONTEND_URL: z.string().default("http://127.0.0.1:5173"),
   RESEND_API_KEY: z.string().default(""),
   RESEND_FROM_EMAIL: z.string().default("ShopCore <no-reply@shopcore.local>"),

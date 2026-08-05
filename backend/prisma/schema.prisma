@@ -33,12 +33,18 @@ datasource db {
 // =========================================================================
 
 model User {
-  id              String    @id @default(uuid()) @db.Char(36)
-  email           String    @unique @db.VarChar(191)
-  passwordHash    String    @map("password_hash") @db.VarChar(255)
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  displayName     String?   @map("display_name") @db.VarChar(191)
-  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
+  id String @id @default(uuid()) @db.Char(36)
+  // PII is never stored in the clear. `*Encrypted` columns hold AES-256-GCM
+  // envelopes (lib/crypto.ts); `*Hash` columns hold the keyed HMAC-SHA256
+  // blind index that makes the value searchable and uniquely constrainable
+  // without being readable. Never query the encrypted column directly —
+  // look up by hash.
+  emailEncrypted       String    @map("email_encrypted") @db.VarChar(512)
+  emailHash            String    @unique @map("email_hash") @db.Char(64)
+  passwordHash         String    @map("password_hash") @db.VarChar(255)
+  emailVerifiedAt      DateTime? @map("email_verified_at")
+  displayNameEncrypted String?   @map("display_name_encrypted") @db.VarChar(512)
+  isPlatformAdmin      Boolean   @default(false) @map("is_platform_admin")
   // Free-form signup metadata (business name/phone/location/type/team size, etc.)
   // captured at signup time, before a tenant exists. Not the source of truth
   // once a tenant/profile is created — mirrors Supabase's raw_user_meta_data
@@ -89,12 +95,13 @@ model PasswordResetToken {
 model Profile {
   id          String   @id @db.Char(36) // shares PK with User (1:1) — matches Supabase's profiles.id = auth.users.id
   tenantId    String?  @map("tenant_id") @db.Char(36) // nullable: not set until a workspace/tenant exists
-  // display_name/phone are AES-encrypted client-side (src/lib/encryption.ts)
-  // before ever reaching this backend — stored here as opaque ciphertext,
-  // sized generously to comfortably hold the ciphertext+IV blob.
-  displayName String?  @map("display_name") @db.VarChar(512)
-  phone       String?  @db.VarChar(512)
-  language    String   @default("en") @db.VarChar(8) // en | fr | rw | sw
+  // Encrypted server-side on write (lib/crypto.ts). phoneHash is unique so
+  // the same number cannot be registered against two profiles; MySQL permits
+  // repeated NULLs, so profiles without a phone are unaffected.
+  displayNameEncrypted String? @map("display_name_encrypted") @db.VarChar(512)
+  phoneEncrypted       String? @map("phone_encrypted") @db.VarChar(512)
+  phoneHash            String? @unique @map("phone_hash") @db.Char(64)
+  language    String   @default("en") @db.VarChar(8) // en | fr | es | sw
   planId      String?  @map("plan_id") @db.Char(36)
   avatarUrl   String?  @map("avatar_url") @db.VarChar(512)
   createdAt   DateTime @default(now()) @map("created_at")
@@ -118,7 +125,10 @@ model Tenant {
   id                  String    @id @default(uuid()) @db.Char(36)
   name                String    @db.VarChar(191)
   ownerId             String?   @map("owner_id") @db.Char(36)
-  contactEmail        String?   @map("contact_email") @db.VarChar(191)
+  // Not unique: several tenants may legitimately share a billing contact.
+  // Indexed so support tooling can still find a tenant by contact address.
+  contactEmailEncrypted String? @map("contact_email_encrypted") @db.VarChar(512)
+  contactEmailHash      String? @map("contact_email_hash") @db.Char(64)
   slug                String?   @db.VarChar(191)
   logoUrl             String?   @map("logo_url") @db.VarChar(512)
   brandColor          String?   @default("#2563eb") @map("brand_color") @db.VarChar(16)
@@ -161,6 +171,7 @@ model Tenant {
   suppliers        Supplier[]
   staff            Staff[]
 
+  @@index([contactEmailHash])
   @@map("tenants")
 }
 
@@ -393,16 +404,21 @@ model Category {
 model Supplier {
   id        String   @id @default(uuid()) @db.Char(36)
   tenantId  String   @map("tenant_id") @db.Char(36)
-  name      String   @db.VarChar(191)
-  phone     String?  @db.VarChar(32)
-  email     String?  @db.VarChar(191)
-  address   String?  @db.Text
+  // Same per-tenant encryption/uniqueness treatment as Customer.
+  nameEncrypted    String  @map("name_encrypted") @db.VarChar(512)
+  phoneEncrypted   String? @map("phone_encrypted") @db.VarChar(512)
+  phoneHash        String? @map("phone_hash") @db.Char(64)
+  emailEncrypted   String? @map("email_encrypted") @db.VarChar(512)
+  emailHash        String? @map("email_hash") @db.Char(64)
+  addressEncrypted String? @map("address_encrypted") @db.Text
   userId    String?  @map("user_id") @db.Char(36)
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   purchases Purchase[]
 
+  @@unique([tenantId, emailHash])
+  @@unique([tenantId, phoneHash])
   @@index([tenantId])
   @@map("suppliers")
 }
@@ -448,10 +464,16 @@ model Product {
 model Customer {
   id           String   @id @default(uuid()) @db.Char(36)
   tenantId     String   @map("tenant_id") @db.Char(36)
-  name         String   @db.VarChar(191)
-  phone        String?  @db.VarChar(32)
-  email        String?  @db.VarChar(191)
-  address      String?  @db.Text
+  // Encrypted at rest (lib/crypto.ts). The hashes are unique *per tenant*
+  // rather than globally — the same person may be a customer of two
+  // different businesses on the platform, but must not be duplicated within
+  // one of them. See the @@unique declarations below.
+  nameEncrypted    String  @map("name_encrypted") @db.VarChar(512)
+  phoneEncrypted   String? @map("phone_encrypted") @db.VarChar(512)
+  phoneHash        String? @map("phone_hash") @db.Char(64)
+  emailEncrypted   String? @map("email_encrypted") @db.VarChar(512)
+  emailHash        String? @map("email_hash") @db.Char(64)
+  addressEncrypted String? @map("address_encrypted") @db.Text
   totalSpent   Decimal  @default(0) @map("total_spent") @db.Decimal(14, 2)
   loyaltyPoints Int     @default(0) @map("loyalty_points")
   status       String?  @default("active") @db.VarChar(32)
@@ -462,6 +484,8 @@ model Customer {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creditedItems CreditedItem[]
 
+  @@unique([tenantId, emailHash])
+  @@unique([tenantId, phoneHash])
   @@index([tenantId])
   @@map("customers")
 }

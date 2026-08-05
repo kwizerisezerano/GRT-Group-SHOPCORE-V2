@@ -1,12 +1,13 @@
 import { prisma } from "../../db/prisma";
+import { emailBlindIndex, encrypt, encryptNullable, phoneBlindIndexNullable } from "../../lib/crypto";
 import { HttpError } from "../../lib/httpError";
 
 export type CreatePendingWorkspaceInput = {
   userId: string;
   email: string;
-  displayName: string; // already client-side AES-encrypted, stored as opaque text
+  displayName: string; // plaintext in; encrypted server-side before storage
   businessName: string;
-  businessPhone?: string; // already client-side AES-encrypted, stored as opaque text
+  businessPhone?: string; // plaintext in; encrypted server-side before storage
   businessLocation?: string;
   businessType?: string;
   teamSize?: string;
@@ -63,7 +64,8 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
       data: {
         name: input.businessName,
         ownerId: input.userId,
-        contactEmail: input.email,
+        contactEmailEncrypted: encrypt(input.email),
+        contactEmailHash: emailBlindIndex(input.email),
         subscriptionPlan: input.planCode,
         subscriptionStatus: "active",
         paymentStatus: "paid",
@@ -86,8 +88,9 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
       create: {
         id: input.userId,
         tenantId: tenant.id,
-        displayName: input.displayName,
-        phone: input.businessPhone,
+        displayNameEncrypted: encrypt(input.displayName),
+        phoneEncrypted: encryptNullable(input.businessPhone),
+        phoneHash: phoneBlindIndexNullable(input.businessPhone),
         language: input.language || "en",
       },
       update: { tenantId: tenant.id },

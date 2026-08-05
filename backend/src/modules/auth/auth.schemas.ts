@@ -3,8 +3,9 @@ import { z } from "zod";
 export const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  // display_name/phone arrive already AES-encrypted client-side
-  // (src/lib/encryption.ts) - opaque ciphertext strings to this backend.
+  // display_name/phone arrive as plaintext over TLS and are encrypted
+  // server-side (lib/crypto.ts) before they reach the database. The browser
+  // must never hold the encryption key.
   displayName: z.string().min(1),
   businessName: z.string().min(1),
   businessPhone: z.string().optional(),

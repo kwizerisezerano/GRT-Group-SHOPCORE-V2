@@ -74,9 +74,9 @@ export const openApiSpec = {
                 properties: {
                   email: { type: "string", format: "email" },
                   password: { type: "string", minLength: 8 },
-                  displayName: { type: "string", description: "AES-encrypted client-side before it reaches this API" },
+                  displayName: { type: "string", description: "Plaintext over TLS; encrypted server-side with AES-256-GCM before storage" },
                   businessName: { type: "string" },
-                  businessPhone: { type: "string", description: "AES-encrypted client-side before it reaches this API" },
+                  businessPhone: { type: "string", description: "Plaintext over TLS; encrypted server-side with AES-256-GCM before storage" },
                   businessLocation: { type: "string" },
                   businessType: { type: "string" },
                   teamSize: { type: "string" },

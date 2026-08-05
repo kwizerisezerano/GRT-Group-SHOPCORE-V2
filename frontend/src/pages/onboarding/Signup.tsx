@@ -42,7 +42,6 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
-import { encryptData } from "@/lib/encryption";
 import { toast } from "sonner";
 
 import { authApi, workspaceApi } from "@/lib/apiClient";
@@ -1209,13 +1208,16 @@ export default function Signup() {
        * gap to bridge across page loads, and no separate "pending upgrade
        * request" write for paid plans (the approval workflow itself is
        * deferred to a later phase; subscriptions are created pre-approved).
-       * display_name/businessPhone are still AES-encrypted client-side
-       * exactly as before - the backend only ever sees/stores ciphertext.
+       * display_name/businessPhone are sent as plaintext over TLS and are
+       * encrypted server-side with AES-256-GCM (backend/src/lib/crypto.ts).
+       * They used to be encrypted here in the browser, but that required
+       * shipping the key in the JS bundle, where it was readable by anyone.
+       * The key now lives only on the server.
        */
       const { tenantId } = await authApi.signup({
         email: normalizedEmail,
         password: signupPassword,
-        displayName: encryptData(displayName.trim()),
+        displayName: displayName.trim(),
         businessName: businessName.trim(),
         businessPhone: formatPhoneNumberForStorage(businessPhone.trim()),
         businessLocation: businessLocation.trim(),

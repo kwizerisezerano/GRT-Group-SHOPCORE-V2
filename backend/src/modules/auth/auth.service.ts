@@ -1,4 +1,11 @@
 import { prisma } from "../../db/prisma";
+import {
+  decryptNullable,
+  emailBlindIndex,
+  encrypt,
+  encryptNullable,
+  phoneBlindIndexNullable,
+} from "../../lib/crypto";
 import { sendPasswordResetEmail } from "../../lib/email";
 import { HttpError } from "../../lib/httpError";
 import {
@@ -29,26 +36,52 @@ async function primaryMembership(userId: string) {
   });
 }
 
-function publicUser(user: { id: string; email: string; displayName: string | null }) {
-  return { id: user.id, email: user.email, displayName: user.displayName };
+type StoredUser = { id: string; emailEncrypted: string; displayNameEncrypted: string | null };
+
+/**
+ * The only place a User row is turned back into readable fields. Everything
+ * that returns a user to a caller goes through here, so decryption is not
+ * scattered across the module.
+ */
+function publicUser(user: StoredUser) {
+  return {
+    id: user.id,
+    email: decryptNullable(user.emailEncrypted),
+    displayName: decryptNullable(user.displayNameEncrypted),
+  };
 }
 
 export async function signup(input: SignupInput) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  const emailHash = emailBlindIndex(input.email);
+
+  const existing = await prisma.user.findUnique({ where: { emailHash } });
   if (existing) {
     throw HttpError.conflict("An account with this email already exists");
+  }
+
+  // The phone is unique across profiles, so reject a duplicate here with a
+  // clear 409 rather than letting the database constraint surface as a 500.
+  const phoneHash = phoneBlindIndexNullable(input.businessPhone);
+  if (phoneHash) {
+    const phoneTaken = await prisma.profile.findUnique({ where: { phoneHash } });
+    if (phoneTaken) {
+      throw HttpError.conflict("An account with this phone number already exists");
+    }
   }
 
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
     data: {
-      email: input.email,
+      emailEncrypted: encrypt(input.email),
+      emailHash,
       passwordHash,
-      displayName: input.displayName,
+      displayNameEncrypted: encrypt(input.displayName),
       metadata: {
         businessName: input.businessName,
-        businessPhone: input.businessPhone ?? null,
+        // Business phone is PII too, so it is encrypted inside the metadata
+        // blob rather than sitting in the clear in JSON.
+        businessPhone: encryptNullable(input.businessPhone),
         businessLocation: input.businessLocation ?? null,
         businessType: input.businessType ?? null,
         teamSize: input.teamSize ?? null,
@@ -57,7 +90,13 @@ export async function signup(input: SignupInput) {
   });
 
   await prisma.profile.create({
-    data: { id: user.id, displayName: input.displayName, language: input.language || "en" },
+    data: {
+      id: user.id,
+      displayNameEncrypted: encrypt(input.displayName),
+      phoneEncrypted: encryptNullable(input.businessPhone),
+      phoneHash,
+      language: input.language || "en",
+    },
   });
 
   const { tenantId } = await createPendingWorkspace({
@@ -81,7 +120,7 @@ export async function signup(input: SignupInput) {
 }
 
 export async function login(input: LoginInput) {
-  const user = await prisma.user.findUnique({ where: { email: input.email } });
+  const user = await prisma.user.findUnique({ where: { emailHash: emailBlindIndex(input.email) } });
   if (!user) {
     throw HttpError.unauthorized("Invalid email or password");
   }
@@ -177,7 +216,10 @@ export async function me(userId: string) {
 }
 
 export async function requestPasswordReset(email: string) {
-  const user = await prisma.user.findUnique({ where: { email }, include: { profile: true } });
+  const user = await prisma.user.findUnique({
+    where: { emailHash: emailBlindIndex(email) },
+    include: { profile: true },
+  });
   if (user) {
     const reset = generatePasswordResetToken();
     await prisma.passwordResetToken.create({

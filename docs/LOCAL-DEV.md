@@ -146,3 +146,32 @@ There is no `/login` route. Auth lives at:
 - **Docker Hub may be unreachable** behind a policy proxy
   (`production.cloudfront.docker.com` 403), so a containerised MySQL is not always an
   option. The apt route above avoids this.
+
+---
+
+## 7. Encryption keys (added 2026-08-04)
+
+`backend/.env` now requires two 32-byte keys. The server refuses to boot without
+them — there is deliberately no fallback, because booting with a default key would
+silently write data that cannot be decrypted later.
+
+```bash
+openssl rand -hex 32   # -> ENCRYPTION_KEY
+openssl rand -hex 32   # -> BLIND_INDEX_KEY
+```
+
+They must be different values. **Back them up with the database**: the encrypted
+columns are unreadable without `ENCRYPTION_KEY`, and every lookup hash must be
+recomputed if `BLIND_INDEX_KEY` changes.
+
+If you already had a local database from before this change, reset it — the
+migration drops the plaintext columns and cannot backfill the encrypted ones
+(encryption happens in the application, not in SQL):
+
+```bash
+mysql -uroot -e "DROP DATABASE shopcore_v2; CREATE DATABASE shopcore_v2
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+cd backend && npx prisma migrate deploy && npx prisma db seed
+```
+
+Run the backend test suite with `npm test` (25 crypto tests).
