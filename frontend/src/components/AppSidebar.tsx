@@ -44,7 +44,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-import { decryptData } from "@/lib/encryption";
+import { profileApi } from "@/lib/apiClient";
 
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -641,19 +641,13 @@ export function AppSidebar() {
 
     const loadProfile = async () => {
       try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("display_name, avatar_url")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (error) {
-          throw error;
-        }
+        // Served by the backend (/api/profile), which decrypts the stored
+        // display name server-side. The browser no longer needs a key.
+        const data = await profileApi.get();
 
         if (mounted && data) {
           const decryptedData = {
-            display_name: decryptData(data.display_name || '') || '',
+            display_name: data.display_name || '',
             avatar_url: data.avatar_url,
           };
           setProfile(decryptedData);

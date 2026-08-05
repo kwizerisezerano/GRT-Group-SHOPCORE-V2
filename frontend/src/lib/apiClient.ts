@@ -336,6 +336,30 @@ export function createCrudApi<T>(resource: string) {
 export const categoriesApi = createCrudApi<Record<string, unknown>>("categories");
 export const brandsApi = createCrudApi<Record<string, unknown>>("brands");
 export const productsApi = createCrudApi<Record<string, unknown>>("products");
+export const customersApi = createCrudApi<Record<string, unknown>>("customers");
+export const suppliersApi = createCrudApi<Record<string, unknown>>("suppliers");
+export const expensesApi = createCrudApi<Record<string, unknown>>("expenses");
+
+/** The signed-in user's own profile — one row, addressed by the token. */
+export const profileApi = {
+  async get() {
+    return request("/profile", { method: "GET", auth: true }) as Promise<{
+      id: string;
+      display_name: string | null;
+      phone: string | null;
+      language: string;
+      avatar_url: string | null;
+    }>;
+  },
+  async update(input: {
+    display_name?: string;
+    phone?: string | null;
+    avatar_url?: string | null;
+    language?: string;
+  }) {
+    return request("/profile", { method: "PATCH", body: input, auth: true });
+  },
+};
 
 export const workspaceApi = {
   async plans() {

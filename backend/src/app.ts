@@ -13,6 +13,8 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { authRouter } from "./modules/auth/auth.routes";
 import { catalogRouter } from "./modules/catalog/catalog.routes";
+import { crmRouter } from "./modules/crm/crm.routes";
+import { profileRouter } from "./modules/profile/profile.routes";
 import { workspaceRouter } from "./modules/workspace/workspace.routes";
 
 export function createApp() {
@@ -53,6 +55,8 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api", catalogRouter);
+  app.use("/api", crmRouter);
+  app.use("/api/profile", profileRouter);
   app.use("/api/workspace", workspaceRouter);
 
   app.use(notFoundHandler);

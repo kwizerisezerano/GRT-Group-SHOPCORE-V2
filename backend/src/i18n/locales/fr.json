@@ -99,5 +99,35 @@
     "invalidCategory": "La catégorie sélectionnée n'existe pas.",
     "invalidBrand": "La marque sélectionnée n'existe pas.",
     "priceBelowCost": "Le prix de vente ne peut pas être inférieur au prix de revient."
+  },
+  "crm": {
+    "customerListed": "Clients chargés avec succès.",
+    "customerFetched": "Client chargé avec succès.",
+    "customerCreated": "Client créé avec succès.",
+    "customerUpdated": "Client mis à jour avec succès.",
+    "customerDeleted": "Client supprimé avec succès.",
+    "customerNotFound": "Ce client est introuvable.",
+    "customerDuplicate": "Un client avec cet e-mail ou ce numéro de téléphone existe déjà.",
+    "supplierListed": "Fournisseurs chargés avec succès.",
+    "supplierFetched": "Fournisseur chargé avec succès.",
+    "supplierCreated": "Fournisseur créé avec succès.",
+    "supplierUpdated": "Fournisseur mis à jour avec succès.",
+    "supplierDeleted": "Fournisseur supprimé avec succès.",
+    "supplierNotFound": "Ce fournisseur est introuvable.",
+    "supplierDuplicate": "Un fournisseur avec cet e-mail ou ce numéro de téléphone existe déjà.",
+    "supplierInUse": "Ce fournisseur ne peut pas être supprimé tant que des achats lui sont associés.",
+    "expenseListed": "Dépenses chargées avec succès.",
+    "expenseFetched": "Dépense chargée avec succès.",
+    "expenseCreated": "Dépense enregistrée avec succès.",
+    "expenseUpdated": "Dépense mise à jour avec succès.",
+    "expenseDeleted": "Dépense supprimée avec succès.",
+    "expenseNotFound": "Cette dépense est introuvable.",
+    "expenseDuplicate": "Cette dépense a déjà été enregistrée."
+  },
+  "profile": {
+    "loaded": "Profil chargé avec succès.",
+    "updated": "Votre profil a été mis à jour avec succès.",
+    "notFound": "Votre profil est introuvable.",
+    "phoneTaken": "Ce numéro de téléphone est déjà utilisé par un autre compte."
   }
 }

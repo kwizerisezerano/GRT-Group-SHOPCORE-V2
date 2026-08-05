@@ -99,5 +99,35 @@
     "invalidCategory": "La categoría seleccionada no existe.",
     "invalidBrand": "La marca seleccionada no existe.",
     "priceBelowCost": "El precio de venta no puede ser inferior al precio de costo."
+  },
+  "crm": {
+    "customerListed": "Clientes cargados correctamente.",
+    "customerFetched": "Cliente cargado correctamente.",
+    "customerCreated": "Cliente creado correctamente.",
+    "customerUpdated": "Cliente actualizado correctamente.",
+    "customerDeleted": "Cliente eliminado correctamente.",
+    "customerNotFound": "No se encontró ese cliente.",
+    "customerDuplicate": "Ya existe un cliente con este correo electrónico o número de teléfono.",
+    "supplierListed": "Proveedores cargados correctamente.",
+    "supplierFetched": "Proveedor cargado correctamente.",
+    "supplierCreated": "Proveedor creado correctamente.",
+    "supplierUpdated": "Proveedor actualizado correctamente.",
+    "supplierDeleted": "Proveedor eliminado correctamente.",
+    "supplierNotFound": "No se encontró ese proveedor.",
+    "supplierDuplicate": "Ya existe un proveedor con este correo electrónico o número de teléfono.",
+    "supplierInUse": "Este proveedor no se puede eliminar mientras tenga compras registradas.",
+    "expenseListed": "Gastos cargados correctamente.",
+    "expenseFetched": "Gasto cargado correctamente.",
+    "expenseCreated": "Gasto registrado correctamente.",
+    "expenseUpdated": "Gasto actualizado correctamente.",
+    "expenseDeleted": "Gasto eliminado correctamente.",
+    "expenseNotFound": "No se encontró ese gasto.",
+    "expenseDuplicate": "Este gasto ya se ha registrado."
+  },
+  "profile": {
+    "loaded": "Perfil cargado correctamente.",
+    "updated": "Su perfil se actualizó correctamente.",
+    "notFound": "No se encontró su perfil.",
+    "phoneTaken": "Ese número de teléfono ya lo usa otra cuenta."
   }
 }

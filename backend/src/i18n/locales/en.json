@@ -99,5 +99,35 @@
     "invalidCategory": "The selected category does not exist.",
     "invalidBrand": "The selected brand does not exist.",
     "priceBelowCost": "The selling price cannot be lower than the cost price."
+  },
+  "crm": {
+    "customerListed": "Customers loaded successfully.",
+    "customerFetched": "Customer loaded successfully.",
+    "customerCreated": "Customer created successfully.",
+    "customerUpdated": "Customer updated successfully.",
+    "customerDeleted": "Customer deleted successfully.",
+    "customerNotFound": "That customer could not be found.",
+    "customerDuplicate": "A customer with this email or phone number already exists.",
+    "supplierListed": "Suppliers loaded successfully.",
+    "supplierFetched": "Supplier loaded successfully.",
+    "supplierCreated": "Supplier created successfully.",
+    "supplierUpdated": "Supplier updated successfully.",
+    "supplierDeleted": "Supplier deleted successfully.",
+    "supplierNotFound": "That supplier could not be found.",
+    "supplierDuplicate": "A supplier with this email or phone number already exists.",
+    "supplierInUse": "This supplier cannot be deleted while purchases are still recorded against it.",
+    "expenseListed": "Expenses loaded successfully.",
+    "expenseFetched": "Expense loaded successfully.",
+    "expenseCreated": "Expense recorded successfully.",
+    "expenseUpdated": "Expense updated successfully.",
+    "expenseDeleted": "Expense deleted successfully.",
+    "expenseNotFound": "That expense could not be found.",
+    "expenseDuplicate": "This expense has already been recorded."
+  },
+  "profile": {
+    "loaded": "Profile loaded successfully.",
+    "updated": "Your profile was updated successfully.",
+    "notFound": "Your profile could not be found.",
+    "phoneTaken": "That phone number is already used by another account."
   }
 }

@@ -65,11 +65,17 @@ function conflictingFields(
   const raw = Array.isArray(target)
     ? (target as string[])
     : typeof target === "string"
-      ? // "<table>_<col>_<col>_key" -> the column segments in the middle.
+      ? // "<table>_<col>_<col>_key" -> drop the table prefix and the suffix.
         target.replace(/_key$/, "").split("_").slice(1)
       : [];
 
-  const fields = raw.filter((field) => field !== "tenant" && field !== "id" && field !== "tenant_id");
+  const fields = raw
+    // tenant_id is on every index here and is never the user's mistake.
+    .filter((token) => token !== "tenant" && token !== "id" && token !== "tenant_id")
+    // The constraint lives on the blind index or the ciphertext, but the
+    // field the user actually filled in is "phone", not "phone_hash".
+    .filter((token) => token !== "hash" && token !== "encrypted");
+
   return fields.length > 0 ? { fields } : null;
 }
 

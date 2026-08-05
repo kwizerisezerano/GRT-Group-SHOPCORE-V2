@@ -99,5 +99,35 @@
     "invalidCategory": "Icyiciro wahisemo ntikibaho.",
     "invalidBrand": "Ikirango wahisemo ntikibaho.",
     "priceBelowCost": "Igiciro cyo kugurisha ntigishobora kuba munsi y'igiciro cy'ikiguzi."
+  },
+  "crm": {
+    "customerListed": "Abakiriya bapakiwe neza.",
+    "customerFetched": "Umukiriya yapakiwe neza.",
+    "customerCreated": "Umukiriya yaremwe neza.",
+    "customerUpdated": "Umukiriya yavuguruwe neza.",
+    "customerDeleted": "Umukiriya yasibwe neza.",
+    "customerNotFound": "Uwo mukiriya ntiyabonetse.",
+    "customerDuplicate": "Umukiriya ufite iyi imeyili cyangwa iyi nimero asanzweho.",
+    "supplierListed": "Abatanga ibicuruzwa bapakiwe neza.",
+    "supplierFetched": "Utanga ibicuruzwa yapakiwe neza.",
+    "supplierCreated": "Utanga ibicuruzwa yaremwe neza.",
+    "supplierUpdated": "Utanga ibicuruzwa yavuguruwe neza.",
+    "supplierDeleted": "Utanga ibicuruzwa yasibwe neza.",
+    "supplierNotFound": "Uwo utanga ibicuruzwa ntiyabonetse.",
+    "supplierDuplicate": "Utanga ibicuruzwa ufite iyi imeyili cyangwa iyi nimero asanzweho.",
+    "supplierInUse": "Uyu utanga ibicuruzwa ntashobora gusibwa mu gihe hari amaguriro afitanye na we.",
+    "expenseListed": "Amafaranga yakoreshejwe yapakiwe neza.",
+    "expenseFetched": "Ikoreshwa ryapakiwe neza.",
+    "expenseCreated": "Ikoreshwa ryanditswe neza.",
+    "expenseUpdated": "Ikoreshwa ryavuguruwe neza.",
+    "expenseDeleted": "Ikoreshwa ryasibwe neza.",
+    "expenseNotFound": "Iryo koreshwa ntiryabonetse.",
+    "expenseDuplicate": "Iri koreshwa ryamaze kwandikwa."
+  },
+  "profile": {
+    "loaded": "Umwirondoro wapakiwe neza.",
+    "updated": "Umwirondoro wawe wavuguruwe neza.",
+    "notFound": "Umwirondoro wawe ntiwabonetse.",
+    "phoneTaken": "Iyo nimero ya telefone isanzwe ikoreshwa na konti indi."
   }
 }

@@ -99,5 +99,35 @@
     "invalidCategory": "Kategoria uliyochagua haipo.",
     "invalidBrand": "Chapa uliyochagua haipo.",
     "priceBelowCost": "Bei ya kuuza haiwezi kuwa chini ya bei ya gharama."
+  },
+  "crm": {
+    "customerListed": "Wateja wamepakiwa kwa mafanikio.",
+    "customerFetched": "Mteja amepakiwa kwa mafanikio.",
+    "customerCreated": "Mteja ameundwa kwa mafanikio.",
+    "customerUpdated": "Mteja amesasishwa kwa mafanikio.",
+    "customerDeleted": "Mteja amefutwa kwa mafanikio.",
+    "customerNotFound": "Mteja huyo hakupatikana.",
+    "customerDuplicate": "Mteja mwenye barua pepe au nambari hii ya simu tayari yupo.",
+    "supplierListed": "Wasambazaji wamepakiwa kwa mafanikio.",
+    "supplierFetched": "Msambazaji amepakiwa kwa mafanikio.",
+    "supplierCreated": "Msambazaji ameundwa kwa mafanikio.",
+    "supplierUpdated": "Msambazaji amesasishwa kwa mafanikio.",
+    "supplierDeleted": "Msambazaji amefutwa kwa mafanikio.",
+    "supplierNotFound": "Msambazaji huyo hakupatikana.",
+    "supplierDuplicate": "Msambazaji mwenye barua pepe au nambari hii ya simu tayari yupo.",
+    "supplierInUse": "Msambazaji huyu hawezi kufutwa wakati manunuzi bado yamerekodiwa kwake.",
+    "expenseListed": "Matumizi yamepakiwa kwa mafanikio.",
+    "expenseFetched": "Matumizi yamepakiwa kwa mafanikio.",
+    "expenseCreated": "Matumizi yamerekodiwa kwa mafanikio.",
+    "expenseUpdated": "Matumizi yamesasishwa kwa mafanikio.",
+    "expenseDeleted": "Matumizi yamefutwa kwa mafanikio.",
+    "expenseNotFound": "Matumizi hayo hayakupatikana.",
+    "expenseDuplicate": "Matumizi haya tayari yamerekodiwa."
+  },
+  "profile": {
+    "loaded": "Wasifu umepakiwa kwa mafanikio.",
+    "updated": "Wasifu wako umesasishwa kwa mafanikio.",
+    "notFound": "Wasifu wako haukupatikana.",
+    "phoneTaken": "Nambari hiyo ya simu tayari inatumiwa na akaunti nyingine."
   }
 }

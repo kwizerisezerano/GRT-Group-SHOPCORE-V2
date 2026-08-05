@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { brandsApi, categoriesApi, productsApi } from "@/lib/apiClient";
+import {
+  brandsApi,
+  categoriesApi,
+  customersApi,
+  expensesApi,
+  productsApi,
+  suppliersApi,
+} from "@/lib/apiClient";
 import { useApiMutations, useApiTable } from "@/hooks/useApiData";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -936,370 +943,31 @@ export function useSaleMutations() {
 /* CUSTOMERS */
 
 export function useCustomers() {
-  const { user, tenantId, session } = useAuth();
-  return useQuery({
-    queryKey: ["customers", tenantId, queryModeKey(session), localDataVersionKey()],
-    enabled: !!user && !!tenantId,
-    staleTime: queryIsOnline(session) ? 0 : 1000 * 60 * 5,
-    retry: 0,
-    refetchOnReconnect: queryIsOnline(session),
-    refetchOnWindowFocus: queryIsOnline(session),
-    networkMode: queryIsOnline(session) ? "online" : "always",
-    queryFn: async () => {
-      if (!hasOnlineSession(session)) return await getCachedSortedTable<DbCustomer>("customers");
-      try {
-        const { data, error } = await (supabase as any).from("customers").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
-        if (error) throw error;
-        const merged = await mergeOnlineTableWithPending<DbCustomer>("customers", data || []);
-        await saveCachedTable("customers", merged);
-        return merged;
-      } catch (error) {
-        const cached = await getCachedSortedTable<DbCustomer>("customers");
-        if (cached.length > 0 || shouldFallbackToCache(error)) return cached;
-        throw error;
-      }
-    },
-  });
+  return useApiTable<DbCustomer>("customers", customersApi as never);
 }
 
 export function useCustomerMutations() {
-  const qc = useQueryClient();
-  const { user, tenantId, session } = useAuth();
-
-  const create = useMutation({
-    mutationFn: async (customer: Omit<DbCustomer, "id" | "user_id" | "tenant_id" | "created_at">) => {
-      const ctx = requireCtx(user, tenantId);
-      const payload = { ...customer, ...ctx, created_at: new Date().toISOString() };
-      const offlinePayload = { ...payload, id: makeLocalId("offline-customer"), operation: "create" };
-      if (!hasOnlineSession(session)) return await saveOfflineCustomer(offlinePayload);
-      try {
-        const { data, error } = await (supabase as any).from("customers").insert(payload).select().single();
-        if (error) throw error;
-        await cacheTableRecord("customers", data);
-        return data;
-      } catch (error) {
-        if (shouldSaveOffline(error)) return await saveOfflineCustomer(offlinePayload);
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Customer saved offline" : "Customer added");
-    },
-    onError: handleError,
-  });
-
-  const update = useMutation({
-    mutationFn: async ({ id, ...customer }: Partial<DbCustomer> & { id: string }) => {
-      const ctx = requireCtx(user, tenantId);
-      if (!hasOnlineSession(session) || String(id).startsWith("offline-customer-")) {
-        const updated = await updateCachedTableRecord("customers", id, { ...customer, ...ctx, sync_status: "pending" });
-        await safeSavePending("customers", { ...updated, operation: String(id).startsWith("offline-customer-") ? "create" : "update", sync_status: "pending" });
-        return updated;
-      }
-      try {
-        const { error } = await (supabase as any).from("customers").update(customer).eq("id", id).eq("tenant_id", tenantId);
-        if (error) throw error;
-        await updateCachedTableRecord("customers", id, customer);
-        return { id, ...customer, sync_status: "synced" };
-      } catch (error) {
-        if (shouldSaveOffline(error)) {
-          const updated = await updateCachedTableRecord("customers", id, { ...customer, ...ctx, sync_status: "pending" });
-          await safeSavePending("customers", { ...updated, operation: "update" });
-          return updated;
-        }
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Customer update saved offline" : "Customer updated");
-    },
-    onError: handleError,
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const ctx = requireCtx(user, tenantId);
-      if (!hasOnlineSession(session) || String(id).startsWith("offline-customer-")) return await queueTableDelete("customers", id, ctx);
-      try {
-        const { error } = await (supabase as any).from("customers").delete().eq("id", id).eq("tenant_id", tenantId);
-        if (error) throw error;
-        await removeCachedTableRecord("customers", id);
-        return { id, sync_status: "synced" };
-      } catch (error) {
-        if (shouldSaveOffline(error)) return await queueTableDelete("customers", id, ctx);
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Customer removed locally" : "Customer deleted");
-    },
-    onError: handleError,
-  });
-
-  return { create, update, remove };
+  return useApiMutations<DbCustomer>("customers", customersApi as never, "Customer");
 }
 
 /* EXPENSES */
 
 export function useExpenses() {
-  const { user, tenantId, session } = useAuth();
-  return useQuery({
-    queryKey: ["expenses", tenantId, queryModeKey(session), localDataVersionKey()],
-    enabled: !!user && !!tenantId,
-    staleTime: queryIsOnline(session) ? 0 : 1000 * 60 * 5,
-    retry: 0,
-    refetchOnReconnect: queryIsOnline(session),
-    refetchOnWindowFocus: queryIsOnline(session),
-    networkMode: queryIsOnline(session) ? "online" : "always",
-    queryFn: async () => {
-      if (!hasOnlineSession(session)) return await getCachedSortedTable<DbExpense>("expenses");
-      try {
-        const { data, error } = await (supabase as any).from("expenses").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
-        if (error) throw error;
-        const merged = await mergeOnlineTableWithPending<DbExpense>("expenses", data || []);
-        await saveCachedTable("expenses", merged);
-        return merged;
-      } catch (error) {
-        const cached = await getCachedSortedTable<DbExpense>("expenses");
-        if (cached.length > 0 || shouldFallbackToCache(error)) return cached;
-        throw error;
-      }
-    },
-  });
+  return useApiTable<DbExpense>("expenses", expensesApi as never);
 }
 
 export function useExpenseMutations() {
-  const qc = useQueryClient();
-  const { user, tenantId, session } = useAuth();
-
-  const create = useMutation({
-    mutationFn: async (expense: Omit<DbExpense, "id" | "user_id" | "tenant_id" | "created_at">) => {
-      const ctx = requireCtx(user, tenantId);
-      const payload = { ...expense, ...ctx, created_at: new Date().toISOString() };
-      const offlinePayload = { ...payload, id: makeLocalId("offline-expense"), operation: "create" };
-      if (!hasOnlineSession(session)) return await saveOfflineExpense(offlinePayload);
-      try {
-        const { data, error } = await (supabase as any).from("expenses").insert(payload).select().single();
-        if (error) throw error;
-        await cacheTableRecord("expenses", data);
-        return data;
-      } catch (error) {
-        if (shouldSaveOffline(error)) return await saveOfflineExpense(offlinePayload);
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Expense saved offline" : "Expense recorded");
-    },
-    onError: handleError,
-  });
-
-  const update = useMutation({
-    mutationFn: async ({ id, ...expense }: Partial<DbExpense> & { id: string }) => {
-      const ctx = requireCtx(user, tenantId);
-      if (!hasOnlineSession(session) || String(id).startsWith("offline-expense-")) {
-        const updated = await updateCachedTableRecord("expenses", id, { ...expense, ...ctx, sync_status: "pending" });
-        await safeSavePending("expenses", { ...updated, operation: String(id).startsWith("offline-expense-") ? "create" : "update", sync_status: "pending" });
-        return updated;
-      }
-      try {
-        const { error } = await (supabase as any).from("expenses").update(expense).eq("id", id).eq("tenant_id", tenantId);
-        if (error) throw error;
-        await updateCachedTableRecord("expenses", id, expense);
-        return { id, ...expense, sync_status: "synced" };
-      } catch (error) {
-        if (shouldSaveOffline(error)) {
-          const updated = await updateCachedTableRecord("expenses", id, { ...expense, ...ctx, sync_status: "pending" });
-          await safeSavePending("expenses", { ...updated, operation: "update" });
-          return updated;
-        }
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Expense update saved offline" : "Expense updated");
-    },
-    onError: handleError,
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const ctx = requireCtx(user, tenantId);
-      if (!hasOnlineSession(session) || String(id).startsWith("offline-expense-")) return await queueTableDelete("expenses", id, ctx);
-      try {
-        const { error } = await (supabase as any).from("expenses").delete().eq("id", id).eq("tenant_id", tenantId);
-        if (error) throw error;
-        await removeCachedTableRecord("expenses", id);
-        return { id, sync_status: "synced" };
-      } catch (error) {
-        if (shouldSaveOffline(error)) return await queueTableDelete("expenses", id, ctx);
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Expense removed locally" : "Expense deleted");
-    },
-    onError: handleError,
-  });
-
-  return { create, update, remove };
+  return useApiMutations<DbExpense>("expenses", expensesApi as never, "Expense");
 }
 
 /* SUPPLIERS */
 
 export function useSuppliers() {
-  const { user, tenantId, session } = useAuth();
-  return useQuery({
-    queryKey: ["suppliers", tenantId, queryModeKey(session), localDataVersionKey()],
-    enabled: !!user && !!tenantId,
-    staleTime: queryIsOnline(session) ? 0 : 1000 * 60 * 5,
-    retry: 0,
-    refetchOnReconnect: queryIsOnline(session),
-    refetchOnWindowFocus: queryIsOnline(session),
-    networkMode: queryIsOnline(session) ? "online" : "always",
-    queryFn: async () => {
-      if (!hasOnlineSession(session)) return await getCachedSortedTable<DbSupplier>("suppliers");
-      try {
-        const { data, error } = await (supabase as any).from("suppliers").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
-        if (error) throw error;
-        const merged = await mergeOnlineTableWithPending<DbSupplier>("suppliers", data || []);
-        await saveCachedTable("suppliers", merged);
-        return merged;
-      } catch (error) {
-        const cached = await getCachedSortedTable<DbSupplier>("suppliers");
-        if (cached.length > 0 || shouldFallbackToCache(error)) return cached;
-        throw error;
-      }
-    },
-  });
+  return useApiTable<DbSupplier>("suppliers", suppliersApi as never);
 }
 
 export function useSupplierMutations() {
-  const qc = useQueryClient();
-  const { user, tenantId, session } = useAuth();
-
-  const buildSupplierPayload = (supplier: Partial<DbSupplier>) => {
-    const ctx = requireCtx(user, tenantId);
-    const code = String(supplier.code || "").trim();
-    const name = String(supplier.name || "").trim();
-    if (!code) throw new Error("Supplier code is required");
-    if (!name) throw new Error("Supplier name is required");
-    return {
-      ...ctx,
-      code,
-      name,
-      email: supplier.email || null,
-      phone: supplier.phone || null,
-      contact_person: supplier.contact_person || null,
-      address: supplier.address || null,
-      city: supplier.city || null,
-      country: supplier.country || null,
-      tax_number: supplier.tax_number || null,
-      payment_terms: supplier.payment_terms || "Immediate",
-      status: supplier.status || "active",
-      notes: supplier.notes || null,
-      total_purchases: Number(supplier.total_purchases || 0),
-      outstanding_balance: Number(supplier.outstanding_balance || 0),
-      created_at: (supplier as any).created_at || new Date().toISOString(),
-    };
-  };
-
-  const create = useMutation({
-    mutationFn: async (supplier: Partial<DbSupplier>) => {
-      const payload = buildSupplierPayload(supplier);
-      const offlinePayload = { ...payload, id: (supplier as any).id || makeLocalId("offline-supplier"), operation: "create" };
-      if (!hasOnlineSession(session)) return await saveOfflineSupplier(offlinePayload);
-      try {
-        const { data, error } = await (supabase as any).from("suppliers").insert(payload).select().single();
-        if (error) throw error;
-        await cacheTableRecord("suppliers", data);
-        return data;
-      } catch (error) {
-        if (shouldSaveOffline(error)) return await saveOfflineSupplier(offlinePayload);
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Supplier saved offline" : "Supplier added");
-    },
-    onError: handleError,
-  });
-
-  const update = useMutation({
-    mutationFn: async ({ id, ...supplier }: Partial<DbSupplier> & { id: string }) => {
-      const ctx = requireCtx(user, tenantId);
-      const payload = {
-        code: supplier.code,
-        name: supplier.name,
-        email: supplier.email || null,
-        phone: supplier.phone || null,
-        contact_person: supplier.contact_person || null,
-        address: supplier.address || null,
-        city: supplier.city || null,
-        country: supplier.country || null,
-        tax_number: supplier.tax_number || null,
-        payment_terms: supplier.payment_terms || "Immediate",
-        status: supplier.status || "active",
-        notes: supplier.notes || null,
-        total_purchases: Number(supplier.total_purchases || 0),
-        outstanding_balance: Number(supplier.outstanding_balance || 0),
-        updated_at: new Date().toISOString(),
-      };
-      if (!hasOnlineSession(session) || String(id).startsWith("offline-supplier-")) {
-        const updated = await updateCachedTableRecord("suppliers", id, { ...payload, ...ctx, sync_status: "pending" });
-        await safeSavePending("suppliers", { ...updated, operation: String(id).startsWith("offline-supplier-") ? "create" : "update", sync_status: "pending" });
-        return updated;
-      }
-      try {
-        const { error } = await (supabase as any).from("suppliers").update(payload).eq("id", id).eq("tenant_id", tenantId);
-        if (error) throw error;
-        await updateCachedTableRecord("suppliers", id, payload);
-        return { id, ...payload, sync_status: "synced" };
-      } catch (error) {
-        if (shouldSaveOffline(error)) {
-          const updated = await updateCachedTableRecord("suppliers", id, { ...payload, ...ctx, sync_status: "pending" });
-          await safeSavePending("suppliers", { ...updated, operation: "update" });
-          return updated;
-        }
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Supplier update saved offline" : "Supplier updated");
-    },
-    onError: handleError,
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const ctx = requireCtx(user, tenantId);
-      if (!hasOnlineSession(session) || String(id).startsWith("offline-supplier-")) return await queueTableDelete("suppliers", id, ctx);
-      try {
-        const { error } = await (supabase as any).from("suppliers").delete().eq("id", id).eq("tenant_id", tenantId);
-        if (error) throw error;
-        await removeCachedTableRecord("suppliers", id);
-        return { id, sync_status: "synced" };
-      } catch (error) {
-        if (shouldSaveOffline(error)) return await queueTableDelete("suppliers", id, ctx);
-        throw error;
-      }
-    },
-    onSuccess: (data: any) => {
-      invalidateBusinessQueries(qc);
-      toast.success(data?.sync_status === "pending" ? "Supplier removed locally" : "Supplier deleted");
-    },
-    onError: handleError,
-  });
-
-  return { create, update, remove };
+  return useApiMutations<DbSupplier>("suppliers", suppliersApi as never, "Supplier");
 }
 
 /* PURCHASES */

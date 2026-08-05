@@ -18,9 +18,11 @@
 function crudPaths(
   resource: string,
   label: string,
-  properties: Record<string, unknown>
+  properties: Record<string, unknown>,
+  tag = "Catalog",
+  note?: string
 ): Record<string, unknown> {
-  const schema = { type: "object", properties };
+  const schema = { type: "object", properties, ...(note ? { description: note } : {}) };
   const auth = [{ bearerAuth: [] }];
 
   const envelope = (dataSchema: unknown) => ({
@@ -42,7 +44,7 @@ function crudPaths(
   return {
     [`/${resource}`]: {
       get: {
-        tags: ["Catalog"],
+        tags: [tag],
         summary: `List ${resource}`,
         security: auth,
         parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
@@ -53,7 +55,7 @@ function crudPaths(
         },
       },
       post: {
-        tags: ["Catalog"],
+        tags: [tag],
         summary: `Create a ${label.toLowerCase()}`,
         security: auth,
         parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
@@ -72,7 +74,7 @@ function crudPaths(
         { $ref: "#/components/parameters/LanguageHeader" },
       ],
       get: {
-        tags: ["Catalog"],
+        tags: [tag],
         summary: `Fetch one ${label.toLowerCase()}`,
         security: auth,
         responses: {
@@ -81,7 +83,7 @@ function crudPaths(
         },
       },
       patch: {
-        tags: ["Catalog"],
+        tags: [tag],
         summary: `Update a ${label.toLowerCase()}`,
         security: auth,
         requestBody: { required: true, content: { "application/json": { schema } } },
@@ -93,7 +95,7 @@ function crudPaths(
         },
       },
       delete: {
-        tags: ["Catalog"],
+        tags: [tag],
         summary: `Delete a ${label.toLowerCase()}`,
         security: auth,
         responses: {
@@ -128,6 +130,8 @@ export const openApiSpec = {
     { name: "Auth", description: "Signup, login, session, password reset" },
     { name: "Workspace", description: "Tenant/workspace bootstrap and subscription plan catalog" },
     { name: "Catalog", description: "Products, categories and brands. All tenant-scoped." },
+    { name: "CRM", description: "Customers, suppliers and expenses. Personal data is encrypted at rest." },
+    { name: "Profile", description: "The signed-in user's own editable profile." },
   ],
   components: {
     securitySchemes: {
@@ -204,6 +208,69 @@ export const openApiSpec = {
     },
   },
   paths: {
+    ...crudPaths("customers", "Customer", {
+      name: { type: "string", maxLength: 191, example: "Aline Mukamana" },
+      phone: { type: "string", nullable: true, example: "+250788111222" },
+      email: { type: "string", format: "email", nullable: true },
+      address: { type: "string", nullable: true },
+      loyalty_points: { type: "integer", minimum: 0 },
+      status: { type: "string", enum: ["active", "inactive"] },
+    }, "CRM", "Name, phone, email and address are encrypted at rest with AES-256-GCM. Email and phone are additionally indexed by a keyed HMAC so they stay unique per tenant; those hashes are never returned."),
+    ...crudPaths("suppliers", "Supplier", {
+      name: { type: "string", maxLength: 191, example: "Kigali Wholesale" },
+      phone: { type: "string", nullable: true },
+      email: { type: "string", format: "email", nullable: true },
+      address: { type: "string", nullable: true },
+    }, "CRM", "Same encryption treatment as customers. Deleting a supplier with recorded purchases returns 409."),
+    ...crudPaths("expenses", "Expense", {
+      title: { type: "string", maxLength: 191, example: "Generator fuel" },
+      amount: { type: "number", minimum: 0, example: 45000 },
+      category: { type: "string", nullable: true, example: "Utilities" },
+      notes: { type: "string", nullable: true },
+    }, "CRM"),
+
+    "/profile": {
+      get: {
+        tags: ["Profile"],
+        summary: "Fetch the signed-in user's profile",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
+        responses: {
+          "200": { description: "OK" },
+          "401": { description: "Not authenticated" },
+          "404": { description: "No profile for this user" },
+        },
+      },
+      patch: {
+        tags: ["Profile"],
+        summary: "Update the signed-in user's profile",
+        description:
+          "Accepts either display_name or displayName. The display name is mirrored onto the user record that /auth/me reads, so the two cannot disagree.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  display_name: { type: "string", maxLength: 191 },
+                  phone: { type: "string", nullable: true },
+                  avatar_url: { type: "string", format: "uri", nullable: true },
+                  language: { type: "string", enum: ["en", "fr", "es", "sw", "rw"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Updated" },
+          "400": { description: "Validation failed" },
+          "409": { description: "Phone number already used by another account" },
+        },
+      },
+    },
+
     ...crudPaths("categories", "Category", {
       name: { type: "string", maxLength: 191, example: "Beverages" },
       description: { type: "string", nullable: true },
