@@ -3,7 +3,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
+    // Unit tests only. Anything touching a real database lives in
+    // *.integration.test.ts and runs via vitest.integration.config.ts, so
+    // `npm test` stays runnable with no MySQL present.
     include: ["src/**/*.test.ts"],
+    exclude: ["**/node_modules/**", "src/**/*.integration.test.ts"],
     // Keys the crypto suite needs. Set here rather than in .env so the suite
     // is reproducible on a machine that has never been configured, and so it
     // can never accidentally run against real keys.

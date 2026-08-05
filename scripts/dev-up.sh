@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+#
+# Bring the whole ShopCore stack up: MySQL, migrations, seed, backend, frontend.
+#
+# Idempotent — safe to re-run at any time. Skips whatever is already healthy,
+# so it doubles as "start the stack" and "put the stack back after my machine
+# or container restarted".
+#
+#   ./scripts/dev-up.sh            start everything
+#   ./scripts/dev-up.sh --reset    drop and recreate the database first
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG_DIR="${SHOPCORE_LOG_DIR:-${TMPDIR:-/tmp}/shopcore-dev}"
+DB_NAME="shopcore_v2"
+DB_USER="shopcore"
+DB_PASS="shopcore_dev_pw"
+RESET=0
+
+[[ "${1:-}" == "--reset" ]] && RESET=1
+mkdir -p "$LOG_DIR"
+
+say() { printf '\033[1;36m==>\033[0m %s\n' "$1"; }
+ok()  { printf '\033[1;32m  ok\033[0m %s\n' "$1"; }
+die() { printf '\033[1;31m  !!\033[0m %s\n' "$1" >&2; exit 1; }
+
+wait_for() { # wait_for <seconds> <description> <command...>
+  local timeout=$1 what=$2; shift 2
+  local waited=0
+  until "$@" >/dev/null 2>&1; do
+    sleep 1
+    waited=$((waited + 1))
+    [[ $waited -ge $timeout ]] && die "timed out after ${timeout}s waiting for $what"
+  done
+}
+
+# ---------------------------------------------------------------- MySQL ----
+say "MySQL"
+if ! mysqladmin ping --silent >/dev/null 2>&1; then
+  command -v mysqld >/dev/null 2>&1 || die "mysqld not installed (apt-get install mysql-server)"
+  mkdir -p /var/run/mysqld /var/log/mysql
+  chown -R mysql:mysql /var/run/mysqld /var/log/mysql /var/lib/mysql 2>/dev/null || true
+  # setsid detaches from this shell's process group so the server outlives it.
+  setsid nohup mysqld --user=mysql --daemonize >"$LOG_DIR/mysqld.log" 2>&1 </dev/null || true
+  wait_for 90 "mysqld" mysqladmin ping --silent
+fi
+ok "running ($(mysql -uroot -sN -e 'SELECT VERSION()' 2>/dev/null || echo 'version unknown'))"
+
+# ------------------------------------------------------------- Database ----
+say "Database"
+if [[ $RESET -eq 1 ]]; then
+  mysql -uroot -e "DROP DATABASE IF EXISTS ${DB_NAME}"
+  ok "dropped ${DB_NAME}"
+fi
+
+# The app user exists because Ubuntu's root uses auth_socket and cannot
+# connect over TCP, which is how Prisma connects. See docs/LOCAL-DEV.md.
+mysql -uroot <<SQL
+CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ${DB_NAME}_shadow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'%';
+GRANT ALL PRIVILEGES ON ${DB_NAME}_shadow.* TO '${DB_USER}'@'%';
+GRANT CREATE, DROP, ALTER, REFERENCES ON *.* TO '${DB_USER}'@'%';
+FLUSH PRIVILEGES;
+SQL
+ok "${DB_NAME} ready"
+
+# -------------------------------------------------------------- Backend ----
+say "Backend"
+cd "$ROOT/backend"
+[[ -d node_modules ]] || { npm install --silent; ok "installed dependencies"; }
+
+if [[ ! -f .env ]]; then
+  cp .env.example .env
+  # Secrets are generated per machine; committing them would defeat the point.
+  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=\"mysql://${DB_USER}:${DB_PASS}@127.0.0.1:3306/${DB_NAME}\"|" .env
+  sed -i "s|^JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET=\"$(openssl rand -hex 32)\"|" .env
+  sed -i "s|^JWT_REFRESH_SECRET=.*|JWT_REFRESH_SECRET=\"$(openssl rand -hex 32)\"|" .env
+  sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=\"$(openssl rand -hex 32)\"|" .env
+  sed -i "s|^BLIND_INDEX_KEY=.*|BLIND_INDEX_KEY=\"$(openssl rand -hex 32)\"|" .env
+  sed -i "s|^RESEND_API_KEY=.*|RESEND_API_KEY=\"\"|" .env
+  ok "generated .env with fresh keys"
+fi
+
+npx prisma generate >/dev/null 2>&1
+npx prisma migrate deploy 2>&1 | grep -qE "already in sync|successfully applied|No pending" \
+  && ok "migrations applied" || die "prisma migrate deploy failed"
+
+# Seed is idempotent (upserts), so this is safe on every boot.
+npx prisma db seed >/dev/null 2>&1 && ok "seeded reference data"
+
+if ! curl -sf http://127.0.0.1:4000/api/health >/dev/null 2>&1; then
+  setsid nohup npm run dev >"$LOG_DIR/backend.log" 2>&1 </dev/null &
+  wait_for 120 "backend" curl -sf http://127.0.0.1:4000/api/health
+fi
+ok "http://127.0.0.1:4000  (docs at /api/docs)"
+
+# ------------------------------------------------------------- Frontend ----
+say "Frontend"
+cd "$ROOT/frontend"
+[[ -d node_modules ]] || { npm install --silent; ok "installed dependencies"; }
+
+if [[ ! -f .env ]]; then
+  printf 'VITE_ENCRYPTION_KEY="local-dev-encryption-key-not-for-production"\n' > .env
+  ok "generated .env"
+fi
+
+if ! curl -sf http://127.0.0.1:5173/ >/dev/null 2>&1; then
+  setsid nohup npm run dev >"$LOG_DIR/frontend.log" 2>&1 </dev/null &
+  wait_for 180 "frontend" curl -sf http://127.0.0.1:5173/
+fi
+ok "http://127.0.0.1:5173"
+
+echo
+say "Stack is up. Logs in $LOG_DIR"
