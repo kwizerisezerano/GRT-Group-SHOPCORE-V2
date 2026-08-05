@@ -6,7 +6,12 @@ import {
   encryptNullable,
   phoneBlindIndexNullable,
 } from "../../lib/crypto";
-import { sendPasswordResetEmail } from "../../lib/email";
+import {
+  sendAccountCreatedEmail,
+  sendPasswordChangedEmail,
+  sendPasswordResetEmail,
+  sendSubscriptionActivatedEmail,
+} from "../../lib/email/notifications";
 import { HttpError } from "../../lib/httpError";
 import {
   generatePasswordResetToken,
@@ -115,6 +120,24 @@ export async function signup(input: SignupInput) {
   });
 
   const tokens = await issueTokenPair(user, tenantId, "owner");
+
+  // Fire-and-forget: a delivery failure must not fail a signup that has
+  // already committed. sendNotification swallows and logs its own errors.
+  const language = input.language ?? "en";
+  void sendAccountCreatedEmail({
+    to: input.email,
+    name: input.displayName,
+    workspace: input.businessName,
+    language,
+  });
+  void sendSubscriptionActivatedEmail({
+    to: input.email,
+    name: input.displayName,
+    workspace: input.businessName,
+    plan: input.planCode,
+    cycle: input.billingCycle,
+    language,
+  });
 
   return { user: publicUser(user), tenantId, ...tokens };
 }
@@ -225,7 +248,12 @@ export async function requestPasswordReset(email: string) {
     await prisma.passwordResetToken.create({
       data: { userId: user.id, tokenHash: reset.hash, expiresAt: reset.expiresAt },
     });
-    await sendPasswordResetEmail(email, reset.token, user.profile?.language);
+    await sendPasswordResetEmail({
+      to: email,
+      name: decryptNullable(user.displayNameEncrypted) ?? email,
+      resetToken: reset.token,
+      language: user.profile?.language,
+    });
   }
   // Always the same response, whether or not the account exists.
 }
@@ -247,4 +275,21 @@ export async function completePasswordReset(token: string, newPassword: string) 
       data: { revokedAt: new Date() },
     }),
   ]);
+
+  // Tell the account holder their password changed — the signal that matters
+  // if someone else did it.
+  const owner = await prisma.user.findUnique({
+    where: { id: stored.userId },
+    include: { profile: true },
+  });
+  if (owner) {
+    const email = decryptNullable(owner.emailEncrypted);
+    if (email) {
+      void sendPasswordChangedEmail({
+        to: email,
+        name: decryptNullable(owner.displayNameEncrypted) ?? email,
+        language: owner.profile?.language,
+      });
+    }
+  }
 }

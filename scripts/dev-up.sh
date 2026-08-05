@@ -31,7 +31,13 @@ wait_for() { # wait_for <seconds> <description> <command...>
   until "$@" >/dev/null 2>&1; do
     sleep 1
     waited=$((waited + 1))
-    [[ $waited -ge $timeout ]] && die "timed out after ${timeout}s waiting for $what"
+    # Written as a full `if` on purpose. As `[[ ... ]] && die`, the normal
+    # not-yet-timed-out path makes this the last command in the loop body and
+    # returns non-zero, which `set -e` treats as a failure and kills the
+    # script — so the very first start of a service always aborted.
+    if [[ $waited -ge $timeout ]]; then
+      die "timed out after ${timeout}s waiting for $what"
+    fi
   done
 }
 

@@ -39,5 +39,37 @@
     "forbidden": "No tiene permiso para realizar esta acción.",
     "conflict": "Este registro ya existe.",
     "internal": "Se produjo un error por nuestra parte. Inténtelo de nuevo."
+  },
+  "email": {
+    "common": {
+      "greeting": "Hola {{name}}:",
+      "linkFallback": "Si el botón no funciona, copie este enlace en su navegador:",
+      "footer": "Este es un mensaje automático de ShopCore. Por favor, no responda a él.",
+      "ignore": "Si usted no solicitó esto, puede ignorar este correo electrónico."
+    },
+    "accountCreated": {
+      "subject": "Bienvenido a ShopCore",
+      "heading": "Su espacio de trabajo está listo",
+      "body": "Su cuenta de ShopCore y el espacio de trabajo {{workspace}} se crearon correctamente. Ya puede iniciar sesión y comenzar a configurar su negocio.",
+      "cta": "Abrir ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Restablezca su contraseña de ShopCore",
+      "heading": "Restablezca su contraseña",
+      "body": "Recibimos una solicitud para restablecer la contraseña de su cuenta de ShopCore. Elija una nueva con el botón de abajo. Este enlace caduca en una hora.",
+      "cta": "Restablecer contraseña"
+    },
+    "passwordChanged": {
+      "subject": "Su contraseña de ShopCore fue cambiada",
+      "heading": "Contraseña cambiada",
+      "body": "La contraseña de su cuenta de ShopCore se cambió correctamente. Se cerró la sesión en todos los demás dispositivos. Si no fue usted, restablezca su contraseña de inmediato y comuníquese con el soporte.",
+      "cta": "Revisar la seguridad de la cuenta"
+    },
+    "subscriptionActivated": {
+      "subject": "Su suscripción a ShopCore está activa",
+      "heading": "Suscripción activada",
+      "body": "Su suscripción {{plan}} ya está activa con un ciclo de facturación {{cycle}} para el espacio de trabajo {{workspace}}. Gracias por elegir ShopCore.",
+      "cta": "Ver facturación"
+    }
   }
 }

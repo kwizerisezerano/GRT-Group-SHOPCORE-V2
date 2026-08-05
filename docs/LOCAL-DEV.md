@@ -175,3 +175,37 @@ cd backend && npx prisma migrate deploy && npx prisma db seed
 ```
 
 Run the backend test suite with `npm test` (25 crypto tests).
+
+---
+
+## 8. One-command bring-up
+
+`scripts/dev-up.sh` does everything in sections 1-3 and is idempotent, so it is
+also how you recover after a restart:
+
+```bash
+./scripts/dev-up.sh            # start MySQL, migrate, seed, run both servers
+./scripts/dev-up.sh --reset    # drop and recreate the database first
+```
+
+It generates `backend/.env` with fresh secrets on first run and skips whatever
+is already healthy. Logs land in `/tmp/shopcore-dev/`.
+
+---
+
+## 9. Seeing changes in the browser
+
+The pricing catalogue on `/pricing` and the signup flow now read from the
+backend, so with the stack up you can watch the full path work:
+
+| What to do | What proves it |
+|---|---|
+| Open `/pricing` | Four plans render from MySQL via `/api/workspace/plans` — no Supabase involved |
+| Sign up at `/signup` | 201 with a backend-authored success message |
+| Sign up twice | 409 "An account with this email already exists." — the message shown is the backend's |
+| Switch language, then trigger an error | The message changes language; the API translates it, the frontend just displays it |
+| Watch `/tmp/shopcore-dev/backend.log` during signup | Welcome and subscription emails render in the signup language |
+
+Emails are printed to the backend log rather than sent while `RESEND_API_KEY`
+is empty, so the whole notification path is exercised locally with no provider
+account and no risk of mailing a real person from a dev database.

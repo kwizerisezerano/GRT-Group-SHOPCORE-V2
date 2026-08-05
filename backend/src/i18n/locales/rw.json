@@ -39,5 +39,37 @@
     "forbidden": "Ntufite uruhushya rwo gukora iki gikorwa.",
     "conflict": "Iyi nyandiko isanzweho.",
     "internal": "Hari ikitagenze neza ku ruhande rwacu. Ongera ugerageze."
+  },
+  "email": {
+    "common": {
+      "greeting": "Muraho {{name}},",
+      "linkFallback": "Niba buto idakora, koporora iyi link uyishyire muri mushakisha yawe:",
+      "footer": "Ubu ni ubutumwa bwikora buturutse kuri ShopCore. Ntugasubize.",
+      "ignore": "Niba atari wowe wabisabye, ushobora kwirengagiza ubu butumwa."
+    },
+    "accountCreated": {
+      "subject": "Murakaza neza kuri ShopCore",
+      "heading": "Ahakorerwa hawe hariteguye",
+      "body": "Konti yawe ya ShopCore n'ahakorerwa {{workspace}} byaremwe neza. Ushobora kwinjira ubu ugatangira gutunganya ubucuruzi bwawe.",
+      "cta": "Fungura ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Hindura ijambo ry'ibanga rya ShopCore",
+      "heading": "Hindura ijambo ry'ibanga",
+      "body": "Twakiriye ubusabe bwo guhindura ijambo ry'ibanga rya konti yawe ya ShopCore. Hitamo irindi ukoresheje buto iri hasi. Iyi link irangira mu isaha imwe.",
+      "cta": "Hindura ijambo ry'ibanga"
+    },
+    "passwordChanged": {
+      "subject": "Ijambo ry'ibanga rya ShopCore ryahinduwe",
+      "heading": "Ijambo ry'ibanga ryahinduwe",
+      "body": "Ijambo ry'ibanga rya konti yawe ya ShopCore ryahinduwe neza. Ibindi bikoresho byose byasohotse. Niba atari wowe, hindura ijambo ry'ibanga ako kanya uhamagare ubufasha.",
+      "cta": "Reba umutekano wa konti"
+    },
+    "subscriptionActivated": {
+      "subject": "Kwiyandikisha kwawe kuri ShopCore birakora",
+      "heading": "Kwiyandikisha byatangiye",
+      "body": "Kwiyandikisha kwawe kwa {{plan}} ubu birakora ku gihe cyo kwishyura cya {{cycle}} kuri {{workspace}}. Urakoze guhitamo ShopCore.",
+      "cta": "Reba kwishyura"
+    }
   }
 }

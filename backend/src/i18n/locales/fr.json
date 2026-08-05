@@ -39,5 +39,37 @@
     "forbidden": "Vous n'avez pas la permission d'effectuer cette action.",
     "conflict": "Cet enregistrement existe déjà.",
     "internal": "Une erreur est survenue de notre côté. Veuillez réessayer."
+  },
+  "email": {
+    "common": {
+      "greeting": "Bonjour {{name}},",
+      "linkFallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+      "footer": "Ceci est un message automatique de ShopCore. Merci de ne pas y répondre.",
+      "ignore": "Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail."
+    },
+    "accountCreated": {
+      "subject": "Bienvenue sur ShopCore",
+      "heading": "Votre espace de travail est prêt",
+      "body": "Votre compte ShopCore et l'espace de travail {{workspace}} ont été créés avec succès. Vous pouvez vous connecter dès maintenant et commencer à configurer votre entreprise.",
+      "cta": "Ouvrir ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Réinitialisez votre mot de passe ShopCore",
+      "heading": "Réinitialisez votre mot de passe",
+      "body": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte ShopCore. Choisissez-en un nouveau à l'aide du bouton ci-dessous. Ce lien expire dans une heure.",
+      "cta": "Réinitialiser le mot de passe"
+    },
+    "passwordChanged": {
+      "subject": "Votre mot de passe ShopCore a été modifié",
+      "heading": "Mot de passe modifié",
+      "body": "Le mot de passe de votre compte ShopCore a été modifié avec succès. Tous les autres appareils ont été déconnectés. Si vous n'êtes pas à l'origine de cette action, réinitialisez votre mot de passe immédiatement et contactez le support.",
+      "cta": "Vérifier la sécurité du compte"
+    },
+    "subscriptionActivated": {
+      "subject": "Votre abonnement ShopCore est actif",
+      "heading": "Abonnement activé",
+      "body": "Votre abonnement {{plan}} est désormais actif avec une périodicité {{cycle}} pour l'espace de travail {{workspace}}. Merci d'avoir choisi ShopCore.",
+      "cta": "Voir la facturation"
+    }
   }
 }

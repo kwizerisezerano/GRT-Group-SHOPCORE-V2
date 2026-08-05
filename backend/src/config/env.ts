@@ -29,7 +29,12 @@ const envSchema = z.object({
   // File storage (lib/storage.ts): "local" writes under backend/uploads and
   // serves it back via the /uploads static route; "s3" targets any
   // S3-compatible endpoint (AWS S3, MinIO, Cloudflare R2, ...).
-  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  // "cloudinary" is the driver the requirements specify. "local" stays the
+  // zero-config default for development; "s3" is kept for self-hosting.
+  STORAGE_DRIVER: z.enum(["local", "s3", "cloudinary"]).default("local"),
+  CLOUDINARY_CLOUD_NAME: z.string().default(""),
+  CLOUDINARY_API_KEY: z.string().default(""),
+  CLOUDINARY_API_SECRET: z.string().default(""),
   STORAGE_PUBLIC_BASE_URL: z.string().default(""), // s3 only: public URL prefix to read objects back from
   STORAGE_S3_REGION: z.string().default("auto"),
   STORAGE_S3_ENDPOINT: z.string().default(""), // leave empty for real AWS S3; set for MinIO/R2/etc.

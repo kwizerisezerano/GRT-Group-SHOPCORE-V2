@@ -39,5 +39,37 @@
     "forbidden": "Huna ruhusa ya kufanya kitendo hiki.",
     "conflict": "Rekodi hii tayari ipo.",
     "internal": "Hitilafu imetokea kwa upande wetu. Tafadhali jaribu tena."
+  },
+  "email": {
+    "common": {
+      "greeting": "Habari {{name}},",
+      "linkFallback": "Ikiwa kitufe hakifanyi kazi, nakili kiungo hiki kwenye kivinjari chako:",
+      "footer": "Huu ni ujumbe wa kiotomatiki kutoka ShopCore. Tafadhali usijibu.",
+      "ignore": "Ikiwa hukuomba hili, unaweza kupuuza barua pepe hii."
+    },
+    "accountCreated": {
+      "subject": "Karibu ShopCore",
+      "heading": "Eneo lako la kazi liko tayari",
+      "body": "Akaunti yako ya ShopCore na eneo la kazi {{workspace}} vimeundwa kwa mafanikio. Unaweza kuingia sasa na kuanza kusanidi biashara yako.",
+      "cta": "Fungua ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Weka upya nenosiri lako la ShopCore",
+      "heading": "Weka upya nenosiri lako",
+      "body": "Tumepokea ombi la kuweka upya nenosiri la akaunti yako ya ShopCore. Chagua jipya kwa kutumia kitufe hapa chini. Kiungo hiki kitaisha muda baada ya saa moja.",
+      "cta": "Weka upya nenosiri"
+    },
+    "passwordChanged": {
+      "subject": "Nenosiri lako la ShopCore limebadilishwa",
+      "heading": "Nenosiri limebadilishwa",
+      "body": "Nenosiri la akaunti yako ya ShopCore limebadilishwa kwa mafanikio. Vifaa vingine vyote vimetolewa kwenye akaunti. Ikiwa haukuwa wewe, weka upya nenosiri lako mara moja na wasiliana na huduma kwa wateja.",
+      "cta": "Kagua usalama wa akaunti"
+    },
+    "subscriptionActivated": {
+      "subject": "Usajili wako wa ShopCore unafanya kazi",
+      "heading": "Usajili umeanzishwa",
+      "body": "Usajili wako wa {{plan}} sasa unafanya kazi kwa mzunguko wa malipo wa {{cycle}} kwa eneo la kazi {{workspace}}. Asante kwa kuchagua ShopCore.",
+      "cta": "Angalia malipo"
+    }
   }
 }
