@@ -101,7 +101,7 @@ model Profile {
   displayNameEncrypted String? @map("display_name_encrypted") @db.VarChar(512)
   phoneEncrypted       String? @map("phone_encrypted") @db.VarChar(512)
   phoneHash            String? @unique @map("phone_hash") @db.Char(64)
-  language    String   @default("en") @db.VarChar(8) // en | fr | es | sw
+  language    String   @default("en") @db.VarChar(8) // see src/i18n SUPPORTED_LANGUAGES: en | fr | es | sw | rw
   planId      String?  @map("plan_id") @db.Char(36)
   avatarUrl   String?  @map("avatar_url") @db.VarChar(512)
   createdAt   DateTime @default(now()) @map("created_at")

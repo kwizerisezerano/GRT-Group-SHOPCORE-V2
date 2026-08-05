@@ -1,0 +1,43 @@
+{
+  "auth": {
+    "signupSuccess": "Your account and workspace were created successfully.",
+    "emailExists": "An account with this email already exists.",
+    "phoneExists": "An account with this phone number already exists.",
+    "loginSuccess": "Signed in successfully.",
+    "invalidCredentials": "Invalid email or password.",
+    "logoutSuccess": "Signed out successfully.",
+    "tokenRefreshed": "Session refreshed successfully.",
+    "invalidRefreshToken": "Your session has expired. Please sign in again.",
+    "profileLoaded": "Account details loaded successfully.",
+    "missingToken": "You must be signed in to perform this action.",
+    "invalidToken": "Your session is invalid or has expired. Please sign in again.",
+    "passwordResetRequested": "If that email is registered, a reset link has been sent to it.",
+    "passwordResetCompleted": "Your password was updated successfully. Please sign in with your new password.",
+    "invalidResetToken": "This password reset link is invalid or has expired. Please request a new one."
+  },
+  "workspace": {
+    "plansLoaded": "Subscription plans loaded successfully.",
+    "paymentMethodsLoaded": "Payment methods loaded successfully.",
+    "created": "Workspace created successfully.",
+    "requiresTenant": "This action requires an active workspace.",
+    "invalidPlan": "The selected subscription plan is invalid or no longer available.",
+    "invalidPrice": "No active price was found for the selected plan and billing cycle.",
+    "invalidPaymentMethod": "The selected payment method is not recognised."
+  },
+  "common": {
+    "created": "Record created successfully.",
+    "updated": "Record updated successfully.",
+    "deleted": "Record deleted successfully.",
+    "loaded": "Records loaded successfully.",
+    "healthy": "The service is running normally."
+  },
+  "error": {
+    "validation": "Some of the information you entered is invalid. Please check the highlighted fields.",
+    "notFound": "The requested record could not be found.",
+    "routeNotFound": "No route exists for {{method}} {{path}}.",
+    "unauthorized": "You are not authorised to perform this action.",
+    "forbidden": "You do not have permission to perform this action.",
+    "conflict": "This record already exists.",
+    "internal": "Something went wrong on our side. Please try again."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "auth": {
+    "signupSuccess": "Votre compte et votre espace de travail ont été créés avec succès.",
+    "emailExists": "Un compte utilisant cette adresse e-mail existe déjà.",
+    "phoneExists": "Un compte utilisant ce numéro de téléphone existe déjà.",
+    "loginSuccess": "Connexion réussie.",
+    "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
+    "logoutSuccess": "Déconnexion réussie.",
+    "tokenRefreshed": "Session actualisée avec succès.",
+    "invalidRefreshToken": "Votre session a expiré. Veuillez vous reconnecter.",
+    "profileLoaded": "Détails du compte chargés avec succès.",
+    "missingToken": "Vous devez être connecté pour effectuer cette action.",
+    "invalidToken": "Votre session est invalide ou a expiré. Veuillez vous reconnecter.",
+    "passwordResetRequested": "Si cette adresse e-mail est enregistrée, un lien de réinitialisation lui a été envoyé.",
+    "passwordResetCompleted": "Votre mot de passe a été mis à jour avec succès. Veuillez vous connecter avec votre nouveau mot de passe.",
+    "invalidResetToken": "Ce lien de réinitialisation est invalide ou a expiré. Veuillez en demander un nouveau."
+  },
+  "workspace": {
+    "plansLoaded": "Formules d'abonnement chargées avec succès.",
+    "paymentMethodsLoaded": "Moyens de paiement chargés avec succès.",
+    "created": "Espace de travail créé avec succès.",
+    "requiresTenant": "Cette action nécessite un espace de travail actif.",
+    "invalidPlan": "La formule d'abonnement sélectionnée est invalide ou n'est plus disponible.",
+    "invalidPrice": "Aucun tarif actif n'a été trouvé pour la formule et la périodicité sélectionnées.",
+    "invalidPaymentMethod": "Le moyen de paiement sélectionné n'est pas reconnu."
+  },
+  "common": {
+    "created": "Enregistrement créé avec succès.",
+    "updated": "Enregistrement mis à jour avec succès.",
+    "deleted": "Enregistrement supprimé avec succès.",
+    "loaded": "Enregistrements chargés avec succès.",
+    "healthy": "Le service fonctionne normalement."
+  },
+  "error": {
+    "validation": "Certaines informations saisies sont invalides. Veuillez vérifier les champs signalés.",
+    "notFound": "L'enregistrement demandé est introuvable.",
+    "routeNotFound": "Aucune route n'existe pour {{method}} {{path}}.",
+    "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action.",
+    "forbidden": "Vous n'avez pas la permission d'effectuer cette action.",
+    "conflict": "Cet enregistrement existe déjà.",
+    "internal": "Une erreur est survenue de notre côté. Veuillez réessayer."
+  }
+}

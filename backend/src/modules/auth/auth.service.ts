@@ -56,7 +56,7 @@ export async function signup(input: SignupInput) {
 
   const existing = await prisma.user.findUnique({ where: { emailHash } });
   if (existing) {
-    throw HttpError.conflict("An account with this email already exists");
+    throw HttpError.conflict("auth.emailExists");
   }
 
   // The phone is unique across profiles, so reject a duplicate here with a
@@ -65,7 +65,7 @@ export async function signup(input: SignupInput) {
   if (phoneHash) {
     const phoneTaken = await prisma.profile.findUnique({ where: { phoneHash } });
     if (phoneTaken) {
-      throw HttpError.conflict("An account with this phone number already exists");
+      throw HttpError.conflict("auth.phoneExists");
     }
   }
 
@@ -122,12 +122,12 @@ export async function signup(input: SignupInput) {
 export async function login(input: LoginInput) {
   const user = await prisma.user.findUnique({ where: { emailHash: emailBlindIndex(input.email) } });
   if (!user) {
-    throw HttpError.unauthorized("Invalid email or password");
+    throw HttpError.unauthorized("auth.invalidCredentials", { code: "invalid_credentials" });
   }
 
   const valid = await verifyPassword(input.password, user.passwordHash);
   if (!valid) {
-    throw HttpError.unauthorized("Invalid email or password");
+    throw HttpError.unauthorized("auth.invalidCredentials", { code: "invalid_credentials" });
   }
 
   const membership = await primaryMembership(user.id);
@@ -145,14 +145,14 @@ export async function refresh(refreshToken: string) {
   const stored = await prisma.refreshToken.findFirst({ where: { tokenHash } });
 
   if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-    throw HttpError.unauthorized("Invalid or expired refresh token");
+    throw HttpError.unauthorized("auth.invalidRefreshToken", { code: "invalid_refresh_token" });
   }
 
   await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
 
   const user = await prisma.user.findUnique({ where: { id: stored.userId } });
   if (!user) {
-    throw HttpError.unauthorized("Invalid or expired refresh token");
+    throw HttpError.unauthorized("auth.invalidRefreshToken", { code: "invalid_refresh_token" });
   }
 
   const membership = await primaryMembership(user.id);
@@ -170,7 +170,7 @@ export async function logout(refreshToken: string) {
 export async function me(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
-    throw HttpError.unauthorized("User not found");
+    throw HttpError.unauthorized("auth.invalidToken", { code: "user_not_found" });
   }
 
   const membership = await primaryMembership(userId);
@@ -235,7 +235,7 @@ export async function completePasswordReset(token: string, newPassword: string) 
   const stored = await prisma.passwordResetToken.findFirst({ where: { tokenHash } });
 
   if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
-    throw HttpError.badRequest("Invalid or expired reset token");
+    throw HttpError.badRequest("auth.invalidResetToken", { code: "invalid_reset_token" });
   }
 
   const passwordHash = await hashPassword(newPassword);

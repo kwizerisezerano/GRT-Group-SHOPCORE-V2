@@ -30,14 +30,17 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
     where: { code: input.planCode, isActive: true },
   });
   if (!plan) {
-    throw HttpError.badRequest(`Invalid or inactive subscription plan: ${input.planCode}`);
+    throw HttpError.badRequest("workspace.invalidPlan", { code: "invalid_plan", params: { plan: input.planCode } });
   }
 
   const price = await prisma.subscriptionPlanPrice.findFirst({
     where: { planCode: input.planCode, billingCycle: input.billingCycle, isActive: true },
   });
   if (!price) {
-    throw HttpError.badRequest(`No active price for plan ${input.planCode} / ${input.billingCycle}`);
+    throw HttpError.badRequest("workspace.invalidPrice", {
+      code: "invalid_price",
+      params: { plan: input.planCode, cycle: input.billingCycle },
+    });
   }
 
   if (input.paymentMethod) {
@@ -45,7 +48,10 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
       where: { code: input.paymentMethod, isActive: true },
     });
     if (!paymentMethod) {
-      throw HttpError.badRequest(`Unknown payment method: ${input.paymentMethod}`);
+      throw HttpError.badRequest("workspace.invalidPaymentMethod", {
+        code: "invalid_payment_method",
+        params: { method: input.paymentMethod },
+      });
     }
   }
 

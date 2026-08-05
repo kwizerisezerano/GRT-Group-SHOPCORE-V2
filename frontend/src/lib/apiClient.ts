@@ -1,3 +1,5 @@
+import { LANGUAGE_STORAGE_KEY } from "@/i18n/storage";
+
 const TOKENS_KEY = "shopcore_auth_tokens";
 
 export type ApiUser = {
@@ -77,11 +79,17 @@ function toApiSession(raw: {
 export class ApiError extends Error {
   status: number;
   code: string;
+  /**
+   * Field-level validation detail, when the backend sent any. Shaped like
+   * Zod's `flatten()` output: `{ formErrors, fieldErrors }`.
+   */
+  details?: unknown;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, details?: unknown) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -90,8 +98,32 @@ function apiBaseUrl(): string {
   return configured ? configured.replace(/\/$/, "") : "";
 }
 
+/**
+ * Language the API should answer in. Read from the same key the app's
+ * LanguageContext persists to, so backend messages arrive in whatever the
+ * user picked in the UI.
+ */
+function currentLanguage(): string | null {
+  try {
+    return localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The most recent human-readable message the backend sent for a successful
+ * call. Populated on every request so a caller that wants to surface the
+ * backend's own wording (rather than inventing its own) can read it right
+ * after awaiting.
+ */
+export let lastSuccessMessage: string | null = null;
+
 async function rawRequest(path: string, options: { method: string; body?: unknown; auth?: boolean }) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  const language = currentLanguage();
+  if (language) headers["X-Language"] = language;
 
   if (options.auth) {
     const stored = readStoredTokens();
@@ -105,15 +137,29 @@ async function rawRequest(path: string, options: { method: string; body?: unknow
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const body = text ? JSON.parse(text) : null;
 
+  /*
+   * The API answers in one envelope for every route:
+   *   success  { success: true,  message, data }
+   *   failure  { success: false, message, error: { code, details? } }
+   *
+   * Unwrapping here means call sites keep working with the payload directly
+   * and never have to reach through `.data` themselves, and the backend's
+   * already-translated message is what surfaces to the user.
+   */
   if (!response.ok) {
-    const code = data?.error?.code ?? "unknown_error";
-    const message = data?.error?.message ?? "Request failed";
-    throw new ApiError(response.status, code, message);
+    throw new ApiError(
+      response.status,
+      body?.error?.code ?? "unknown_error",
+      body?.message ?? "Request failed",
+      body?.error?.details,
+    );
   }
 
-  return data;
+  lastSuccessMessage = typeof body?.message === "string" ? body.message : null;
+
+  return body?.data ?? null;
 }
 
 /**
@@ -138,13 +184,13 @@ export const authApi = {
   async signup(input: {
     email: string;
     password: string;
-    displayName: string; // already AES-encrypted client-side, see src/lib/encryption.ts
+    displayName: string; // plaintext; encrypted server-side with AES-256-GCM
     businessName: string;
-    businessPhone?: string; // already AES-encrypted client-side
+    businessPhone?: string; // plaintext; encrypted server-side with AES-256-GCM
     businessLocation?: string;
     businessType?: string;
     teamSize?: string;
-    language?: "en" | "fr" | "rw" | "sw";
+    language?: "en" | "fr" | "es" | "sw" | "rw";
     planCode: string;
     billingCycle: "monthly" | "six_months" | "annual";
     paymentMethod?: string;

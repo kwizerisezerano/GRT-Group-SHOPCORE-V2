@@ -1,0 +1,43 @@
+{
+  "auth": {
+    "signupSuccess": "Konti yawe n'ahakorerwa hawe byaremwe neza.",
+    "emailExists": "Konti ikoresha iyi imeyili isanzweho.",
+    "phoneExists": "Konti ikoresha iyi nimero ya telefone isanzweho.",
+    "loginSuccess": "Winjiye neza.",
+    "invalidCredentials": "Imeyili cyangwa ijambo ry'ibanga si byo.",
+    "logoutSuccess": "Wasohotse neza.",
+    "tokenRefreshed": "Igihe cyo gukoresha cyavuguruwe neza.",
+    "invalidRefreshToken": "Igihe cyawe cyo gukoresha cyarangiye. Ongera winjire.",
+    "profileLoaded": "Amakuru ya konti yawe yapakiwe neza.",
+    "missingToken": "Ugomba kuba winjiye kugira ngo ukore iki gikorwa.",
+    "invalidToken": "Igihe cyawe cyo gukoresha ntikiremewe cyangwa cyarangiye. Ongera winjire.",
+    "passwordResetRequested": "Niba iyo imeyili yanditswe, link yo guhindura ijambo ry'ibanga yoherejwe kuri yo.",
+    "passwordResetCompleted": "Ijambo ry'ibanga ryawe ryahinduwe neza. Injira ukoresheje irishya.",
+    "invalidResetToken": "Iyi link yo guhindura ijambo ry'ibanga ntiyemewe cyangwa yarangiye. Saba indi."
+  },
+  "workspace": {
+    "plansLoaded": "Gahunda zo kwiyandikisha zapakiwe neza.",
+    "paymentMethodsLoaded": "Uburyo bwo kwishyura bwapakiwe neza.",
+    "created": "Ahakorerwa hakozwe neza.",
+    "requiresTenant": "Iki gikorwa gisaba ahakorerwa hakora.",
+    "invalidPlan": "Gahunda yo kwiyandikisha wahisemo ntiyemewe cyangwa ntikiboneka.",
+    "invalidPrice": "Nta giciro gikora cyabonetse kuri gahunda n'igihe cyo kwishyura wahisemo.",
+    "invalidPaymentMethod": "Uburyo bwo kwishyura wahisemo ntibuzwi."
+  },
+  "common": {
+    "created": "Inyandiko yaremwe neza.",
+    "updated": "Inyandiko yavuguruwe neza.",
+    "deleted": "Inyandiko yasibwe neza.",
+    "loaded": "Inyandiko zapakiwe neza.",
+    "healthy": "Serivisi irakora neza."
+  },
+  "error": {
+    "validation": "Amwe mu makuru winjije ntiyemewe. Reba ibice byerekanwe.",
+    "notFound": "Inyandiko wasabye ntiyabonetse.",
+    "routeNotFound": "Nta nzira ibaho kuri {{method}} {{path}}.",
+    "unauthorized": "Ntufite uburenganzira bwo gukora iki gikorwa.",
+    "forbidden": "Ntufite uruhushya rwo gukora iki gikorwa.",
+    "conflict": "Iyi nyandiko isanzweho.",
+    "internal": "Hari ikitagenze neza ku ruhande rwacu. Ongera ugerageze."
+  }
+}

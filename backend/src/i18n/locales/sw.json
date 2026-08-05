@@ -1,0 +1,43 @@
+{
+  "auth": {
+    "signupSuccess": "Akaunti yako na eneo lako la kazi vimeundwa kwa mafanikio.",
+    "emailExists": "Akaunti yenye barua pepe hii tayari ipo.",
+    "phoneExists": "Akaunti yenye nambari hii ya simu tayari ipo.",
+    "loginSuccess": "Umeingia kwa mafanikio.",
+    "invalidCredentials": "Barua pepe au nenosiri si sahihi.",
+    "logoutSuccess": "Umetoka kwa mafanikio.",
+    "tokenRefreshed": "Kipindi kimehuishwa kwa mafanikio.",
+    "invalidRefreshToken": "Kipindi chako kimeisha muda. Tafadhali ingia tena.",
+    "profileLoaded": "Maelezo ya akaunti yamepakiwa kwa mafanikio.",
+    "missingToken": "Lazima uwe umeingia ili kufanya kitendo hiki.",
+    "invalidToken": "Kipindi chako si halali au kimeisha muda. Tafadhali ingia tena.",
+    "passwordResetRequested": "Ikiwa barua pepe hiyo imesajiliwa, kiungo cha kuweka upya kimetumwa kwake.",
+    "passwordResetCompleted": "Nenosiri lako limebadilishwa kwa mafanikio. Tafadhali ingia kwa nenosiri lako jipya.",
+    "invalidResetToken": "Kiungo hiki cha kuweka upya si halali au kimeisha muda. Tafadhali omba kingine."
+  },
+  "workspace": {
+    "plansLoaded": "Mipango ya usajili imepakiwa kwa mafanikio.",
+    "paymentMethodsLoaded": "Njia za malipo zimepakiwa kwa mafanikio.",
+    "created": "Eneo la kazi limeundwa kwa mafanikio.",
+    "requiresTenant": "Kitendo hiki kinahitaji eneo la kazi linalofanya kazi.",
+    "invalidPlan": "Mpango wa usajili uliochaguliwa si halali au haupatikani tena.",
+    "invalidPrice": "Hakuna bei inayotumika iliyopatikana kwa mpango na mzunguko wa malipo uliochaguliwa.",
+    "invalidPaymentMethod": "Njia ya malipo uliyochagua haitambuliki."
+  },
+  "common": {
+    "created": "Rekodi imeundwa kwa mafanikio.",
+    "updated": "Rekodi imesasishwa kwa mafanikio.",
+    "deleted": "Rekodi imefutwa kwa mafanikio.",
+    "loaded": "Rekodi zimepakiwa kwa mafanikio.",
+    "healthy": "Huduma inafanya kazi kawaida."
+  },
+  "error": {
+    "validation": "Baadhi ya taarifa ulizoweka si sahihi. Tafadhali angalia sehemu zilizoonyeshwa.",
+    "notFound": "Rekodi uliyoomba haikupatikana.",
+    "routeNotFound": "Hakuna njia iliyopo kwa {{method}} {{path}}.",
+    "unauthorized": "Huna idhini ya kufanya kitendo hiki.",
+    "forbidden": "Huna ruhusa ya kufanya kitendo hiki.",
+    "conflict": "Rekodi hii tayari ipo.",
+    "internal": "Hitilafu imetokea kwa upande wetu. Tafadhali jaribu tena."
+  }
+}

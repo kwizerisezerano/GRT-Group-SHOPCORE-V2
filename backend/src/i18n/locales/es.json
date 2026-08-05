@@ -1,0 +1,43 @@
+{
+  "auth": {
+    "signupSuccess": "Su cuenta y su espacio de trabajo se crearon correctamente.",
+    "emailExists": "Ya existe una cuenta con este correo electrónico.",
+    "phoneExists": "Ya existe una cuenta con este número de teléfono.",
+    "loginSuccess": "Sesión iniciada correctamente.",
+    "invalidCredentials": "Correo electrónico o contraseña incorrectos.",
+    "logoutSuccess": "Sesión cerrada correctamente.",
+    "tokenRefreshed": "Sesión actualizada correctamente.",
+    "invalidRefreshToken": "Su sesión ha expirado. Vuelva a iniciar sesión.",
+    "profileLoaded": "Datos de la cuenta cargados correctamente.",
+    "missingToken": "Debe iniciar sesión para realizar esta acción.",
+    "invalidToken": "Su sesión no es válida o ha expirado. Vuelva a iniciar sesión.",
+    "passwordResetRequested": "Si ese correo electrónico está registrado, se ha enviado un enlace de restablecimiento.",
+    "passwordResetCompleted": "Su contraseña se actualizó correctamente. Inicie sesión con su nueva contraseña.",
+    "invalidResetToken": "Este enlace de restablecimiento no es válido o ha expirado. Solicite uno nuevo."
+  },
+  "workspace": {
+    "plansLoaded": "Planes de suscripción cargados correctamente.",
+    "paymentMethodsLoaded": "Métodos de pago cargados correctamente.",
+    "created": "Espacio de trabajo creado correctamente.",
+    "requiresTenant": "Esta acción requiere un espacio de trabajo activo.",
+    "invalidPlan": "El plan de suscripción seleccionado no es válido o ya no está disponible.",
+    "invalidPrice": "No se encontró un precio activo para el plan y el ciclo de facturación seleccionados.",
+    "invalidPaymentMethod": "El método de pago seleccionado no se reconoce."
+  },
+  "common": {
+    "created": "Registro creado correctamente.",
+    "updated": "Registro actualizado correctamente.",
+    "deleted": "Registro eliminado correctamente.",
+    "loaded": "Registros cargados correctamente.",
+    "healthy": "El servicio funciona con normalidad."
+  },
+  "error": {
+    "validation": "Parte de la información introducida no es válida. Revise los campos señalados.",
+    "notFound": "No se encontró el registro solicitado.",
+    "routeNotFound": "No existe ninguna ruta para {{method}} {{path}}.",
+    "unauthorized": "No está autorizado para realizar esta acción.",
+    "forbidden": "No tiene permiso para realizar esta acción.",
+    "conflict": "Este registro ya existe.",
+    "internal": "Se produjo un error por nuestra parte. Inténtelo de nuevo."
+  }
+}

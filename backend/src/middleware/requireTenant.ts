@@ -20,7 +20,7 @@ declare global {
  */
 export function requireTenant(req: Request, _res: Response, next: NextFunction) {
   if (!req.user?.tenantId) {
-    throw HttpError.forbidden("This action requires an active tenant/workspace");
+    throw HttpError.forbidden("workspace.requiresTenant", { code: "tenant_required" });
   }
 
   req.tenantId = req.user.tenantId;

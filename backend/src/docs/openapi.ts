@@ -4,6 +4,10 @@
  * hand is simpler and more reliable than a jsdoc-comment generator - update
  * it alongside auth.routes.ts/workspace.routes.ts as new endpoints land in
  * later migration phases.
+ *
+ * Every response uses the envelope defined in lib/apiResponse.ts. The
+ * `Success`/`Error` component schemas below describe it once; individual
+ * endpoints reference them and describe only what sits inside `data`.
  */
 export const openApiSpec = {
   openapi: "3.0.3",
@@ -11,7 +15,16 @@ export const openApiSpec = {
     title: "ShopCore API",
     version: "0.1.0",
     description:
-      "Custom backend replacing Supabase, module by module. This phase covers authentication and workspace/tenant bootstrap.",
+      "Custom backend replacing Supabase, module by module. This phase covers authentication and workspace/tenant bootstrap.\n\n" +
+      "**Response envelope** - every endpoint, success or failure, answers with the same shape:\n\n" +
+      "```json\n" +
+      '{ "success": true,  "message": "Signed in successfully.", "data": { } }\n' +
+      '{ "success": false, "message": "Invalid email or password.", "error": { "code": "invalid_credentials" } }\n' +
+      "```\n\n" +
+      "**Languages** - `message` is translated server-side. Choose a language with the `X-Language` " +
+      "header, a `?lang=` query parameter, or standard `Accept-Language` negotiation. Supported: " +
+      "`en`, `fr`, `es`, `sw`, `rw`. The negotiated language is echoed in the `Content-Language` " +
+      "response header.",
   },
   servers: [{ url: "/api" }],
   tags: [
@@ -22,15 +35,55 @@ export const openApiSpec = {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
     },
+    parameters: {
+      LanguageHeader: {
+        name: "X-Language",
+        in: "header",
+        required: false,
+        description: "Language for the response `message`. Overridden by `?lang=`, overrides `Accept-Language`.",
+        schema: { type: "string", enum: ["en", "fr", "es", "sw", "rw"] },
+      },
+    },
     schemas: {
+      Success: {
+        type: "object",
+        required: ["success", "message", "data"],
+        properties: {
+          success: { type: "boolean", enum: [true] },
+          message: {
+            type: "string",
+            description: "Human-readable outcome, already translated. Safe to show a user verbatim.",
+            example: "Signed in successfully.",
+          },
+          data: {
+            nullable: true,
+            description: "Endpoint payload, or null for endpoints that return no body.",
+          },
+        },
+      },
       Error: {
         type: "object",
+        required: ["success", "message", "error"],
         properties: {
+          success: { type: "boolean", enum: [false] },
+          message: {
+            type: "string",
+            description: "Human-readable explanation, already translated.",
+            example: "An account with this email already exists.",
+          },
           error: {
             type: "object",
+            required: ["code"],
             properties: {
-              code: { type: "string" },
-              message: { type: "string" },
+              code: {
+                type: "string",
+                description: "Stable machine-readable identifier; branch on this, not on the message.",
+                example: "invalid_credentials",
+              },
+              details: {
+                description: "Present on validation failures: Zod `flatten()` output with per-field errors.",
+                example: { formErrors: [], fieldErrors: { email: ["Invalid email"] } },
+              },
             },
           },
         },

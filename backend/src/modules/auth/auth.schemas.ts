@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SUPPORTED_LANGUAGES } from "../../i18n";
 
 export const signupSchema = z.object({
   email: z.string().email(),
@@ -12,7 +13,7 @@ export const signupSchema = z.object({
   businessLocation: z.string().optional(),
   businessType: z.string().optional(),
   teamSize: z.string().optional(),
-  language: z.enum(["en", "fr", "rw", "sw"]).optional(),
+  language: z.enum(SUPPORTED_LANGUAGES).optional(),
   planCode: z.string().min(1),
   billingCycle: z.enum(["monthly", "six_months", "annual"]),
   paymentMethod: z.string().optional(),
