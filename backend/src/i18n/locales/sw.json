@@ -71,5 +71,33 @@
       "body": "Usajili wako wa {{plan}} sasa unafanya kazi kwa mzunguko wa malipo wa {{cycle}} kwa eneo la kazi {{workspace}}. Asante kwa kuchagua ShopCore.",
       "cta": "Angalia malipo"
     }
+  },
+  "catalog": {
+    "categoryListed": "Kategoria zimepakiwa kwa mafanikio.",
+    "categoryFetched": "Kategoria imepakiwa kwa mafanikio.",
+    "categoryCreated": "Kategoria imeundwa kwa mafanikio.",
+    "categoryUpdated": "Kategoria imesasishwa kwa mafanikio.",
+    "categoryDeleted": "Kategoria imefutwa kwa mafanikio.",
+    "categoryNotFound": "Kategoria hiyo haikupatikana.",
+    "categoryDuplicate": "Kategoria yenye jina hili tayari ipo.",
+    "categoryInUse": "Kategoria hii haiwezi kufutwa wakati bidhaa bado zimeunganishwa nayo.",
+    "brandListed": "Chapa zimepakiwa kwa mafanikio.",
+    "brandFetched": "Chapa imepakiwa kwa mafanikio.",
+    "brandCreated": "Chapa imeundwa kwa mafanikio.",
+    "brandUpdated": "Chapa imesasishwa kwa mafanikio.",
+    "brandDeleted": "Chapa imefutwa kwa mafanikio.",
+    "brandNotFound": "Chapa hiyo haikupatikana.",
+    "brandDuplicate": "Chapa yenye jina hili tayari ipo.",
+    "brandInUse": "Chapa hii haiwezi kufutwa wakati bidhaa bado zimeunganishwa nayo.",
+    "productListed": "Bidhaa zimepakiwa kwa mafanikio.",
+    "productFetched": "Bidhaa imepakiwa kwa mafanikio.",
+    "productCreated": "Bidhaa imeundwa kwa mafanikio.",
+    "productUpdated": "Bidhaa imesasishwa kwa mafanikio.",
+    "productDeleted": "Bidhaa imefutwa kwa mafanikio.",
+    "productNotFound": "Bidhaa hiyo haikupatikana.",
+    "productDuplicate": "Bidhaa yenye SKU au msimbopau huu tayari ipo.",
+    "invalidCategory": "Kategoria uliyochagua haipo.",
+    "invalidBrand": "Chapa uliyochagua haipo.",
+    "priceBelowCost": "Bei ya kuuza haiwezi kuwa chini ya bei ya gharama."
   }
 }

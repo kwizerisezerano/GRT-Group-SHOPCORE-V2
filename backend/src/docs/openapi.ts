@@ -9,6 +9,103 @@
  * `Success`/`Error` component schemas below describe it once; individual
  * endpoints reference them and describe only what sits inside `data`.
  */
+
+/**
+ * Every CRUD module built on lib/crudModuleFactory.ts exposes the same five
+ * operations with the same status codes, so the paths are generated from one
+ * description of the resource rather than written out five times each.
+ */
+function crudPaths(
+  resource: string,
+  label: string,
+  properties: Record<string, unknown>
+): Record<string, unknown> {
+  const schema = { type: "object", properties };
+  const auth = [{ bearerAuth: [] }];
+
+  const envelope = (dataSchema: unknown) => ({
+    "application/json": {
+      schema: {
+        allOf: [
+          { $ref: "#/components/schemas/Success" },
+          { type: "object", properties: { data: dataSchema } },
+        ],
+      },
+    },
+  });
+
+  const failure = (description: string) => ({
+    description,
+    content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+  });
+
+  return {
+    [`/${resource}`]: {
+      get: {
+        tags: ["Catalog"],
+        summary: `List ${resource}`,
+        security: auth,
+        parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
+        responses: {
+          "200": { description: "OK", content: envelope({ type: "array", items: schema }) },
+          "401": failure("Not authenticated"),
+          "403": failure("No active workspace"),
+        },
+      },
+      post: {
+        tags: ["Catalog"],
+        summary: `Create a ${label.toLowerCase()}`,
+        security: auth,
+        parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
+        requestBody: { required: true, content: { "application/json": { schema } } },
+        responses: {
+          "201": { description: "Created", content: envelope(schema) },
+          "400": failure("Validation failed; error.details carries per-field messages"),
+          "401": failure("Not authenticated"),
+          "409": failure("Duplicate record; error.details.fields names the conflicting column"),
+        },
+      },
+    },
+    [`/${resource}/{id}`]: {
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        { $ref: "#/components/parameters/LanguageHeader" },
+      ],
+      get: {
+        tags: ["Catalog"],
+        summary: `Fetch one ${label.toLowerCase()}`,
+        security: auth,
+        responses: {
+          "200": { description: "OK", content: envelope(schema) },
+          "404": failure("Not found, or belongs to another tenant"),
+        },
+      },
+      patch: {
+        tags: ["Catalog"],
+        summary: `Update a ${label.toLowerCase()}`,
+        security: auth,
+        requestBody: { required: true, content: { "application/json": { schema } } },
+        responses: {
+          "200": { description: "Updated", content: envelope(schema) },
+          "400": failure("Validation failed"),
+          "404": failure("Not found, or belongs to another tenant"),
+          "409": failure("Duplicate record"),
+        },
+      },
+      delete: {
+        tags: ["Catalog"],
+        summary: `Delete a ${label.toLowerCase()}`,
+        security: auth,
+        responses: {
+          "200": { description: "Deleted", content: envelope({ nullable: true }) },
+          "404": failure("Not found, or belongs to another tenant"),
+          "409": failure("Still referenced by other records"),
+        },
+      },
+    },
+  };
+}
+
 export const openApiSpec = {
   openapi: "3.0.3",
   info: {
@@ -30,6 +127,7 @@ export const openApiSpec = {
   tags: [
     { name: "Auth", description: "Signup, login, session, password reset" },
     { name: "Workspace", description: "Tenant/workspace bootstrap and subscription plan catalog" },
+    { name: "Catalog", description: "Products, categories and brands. All tenant-scoped." },
   ],
   components: {
     securitySchemes: {
@@ -106,6 +204,36 @@ export const openApiSpec = {
     },
   },
   paths: {
+    ...crudPaths("categories", "Category", {
+      name: { type: "string", maxLength: 191, example: "Beverages" },
+      description: { type: "string", nullable: true },
+    }),
+    ...crudPaths("brands", "Brand", {
+      name: { type: "string", maxLength: 191, example: "Inyange" },
+    }),
+    ...crudPaths("products", "Product", {
+      name: { type: "string", maxLength: 191, example: "Inyange Milk 1L" },
+      sku: { type: "string", nullable: true, maxLength: 64, example: "INY-MLK-1L" },
+      barcode: { type: "string", nullable: true, maxLength: 64, example: "6001234567890" },
+      category_id: { type: "string", format: "uuid", nullable: true },
+      brand_id: { type: "string", format: "uuid", nullable: true },
+      cost_price: { type: "number", minimum: 0, example: 800 },
+      selling_price: { type: "number", minimum: 0, example: 1200 },
+      stock_quantity: { type: "integer", minimum: 0, example: 48 },
+      min_stock_level: { type: "integer", minimum: 0, example: 10 },
+      tax_rate: { type: "number", minimum: 0, maximum: 100 },
+      unit: { type: "string", nullable: true, example: "pcs" },
+      image_url: { type: "string", nullable: true },
+      description: { type: "string", nullable: true },
+      status: {
+        type: "string",
+        enum: ["active", "inactive", "discontinued", "out_of_stock", "low_stock"],
+        description:
+          "out_of_stock and low_stock are derived server-side from stock_quantity vs min_stock_level; sending them has no effect. inactive and discontinued are honoured as sent.",
+      },
+      expiry_date: { type: "string", format: "date", nullable: true },
+    }),
+
     "/health": {
       get: {
         tags: ["Auth"],

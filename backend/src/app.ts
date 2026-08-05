@@ -12,6 +12,7 @@ import { resolveRequestLanguage } from "./middleware/language";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { authRouter } from "./modules/auth/auth.routes";
+import { catalogRouter } from "./modules/catalog/catalog.routes";
 import { workspaceRouter } from "./modules/workspace/workspace.routes";
 
 export function createApp() {
@@ -51,6 +52,7 @@ export function createApp() {
   app.get("/api/realtime/:channel", requireAuth, sseHandler((req) => req.params.channel));
 
   app.use("/api/auth", authRouter);
+  app.use("/api", catalogRouter);
   app.use("/api/workspace", workspaceRouter);
 
   app.use(notFoundHandler);

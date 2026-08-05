@@ -300,6 +300,43 @@ export const authApi = {
   clearStoredSession: clearStoredTokens,
 };
 
+/**
+ * Builds a client for one backend CRUD module (backend/src/lib/
+ * crudModuleFactory.ts). The shape matches ApiCrudModule in
+ * hooks/useApiData.ts, so a module built this way drops straight into
+ * useApiTable/useApiMutations with no adapter.
+ *
+ * rawRequest already unwraps the response envelope, so `data` here is the
+ * payload itself; it is re-wrapped as `{ data }` to match the hook contract.
+ */
+export function createCrudApi<T>(resource: string) {
+  const base = `/${resource}`;
+
+  return {
+    async list(): Promise<{ data: T[] }> {
+      return { data: (await request(base, { method: "GET", auth: true })) as T[] };
+    },
+    async get(id: string): Promise<{ data: T }> {
+      return { data: (await request(`${base}/${id}`, { method: "GET", auth: true })) as T };
+    },
+    async create(input: Partial<T>): Promise<{ data: T }> {
+      return { data: (await request(base, { method: "POST", body: input, auth: true })) as T };
+    },
+    async update(id: string, input: Partial<T>): Promise<{ data: T }> {
+      return {
+        data: (await request(`${base}/${id}`, { method: "PATCH", body: input, auth: true })) as T,
+      };
+    },
+    async remove(id: string): Promise<void> {
+      await request(`${base}/${id}`, { method: "DELETE", auth: true });
+    },
+  };
+}
+
+export const categoriesApi = createCrudApi<Record<string, unknown>>("categories");
+export const brandsApi = createCrudApi<Record<string, unknown>>("brands");
+export const productsApi = createCrudApi<Record<string, unknown>>("products");
+
 export const workspaceApi = {
   async plans() {
     return request("/workspace/plans", { method: "GET" });

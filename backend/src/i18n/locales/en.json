@@ -71,5 +71,33 @@
       "body": "Your {{plan}} subscription is now active on a {{cycle}} billing cycle for the workspace {{workspace}}. Thank you for choosing ShopCore.",
       "cta": "View billing"
     }
+  },
+  "catalog": {
+    "categoryListed": "Categories loaded successfully.",
+    "categoryFetched": "Category loaded successfully.",
+    "categoryCreated": "Category created successfully.",
+    "categoryUpdated": "Category updated successfully.",
+    "categoryDeleted": "Category deleted successfully.",
+    "categoryNotFound": "That category could not be found.",
+    "categoryDuplicate": "A category with this name already exists.",
+    "categoryInUse": "This category cannot be deleted while products are still assigned to it.",
+    "brandListed": "Brands loaded successfully.",
+    "brandFetched": "Brand loaded successfully.",
+    "brandCreated": "Brand created successfully.",
+    "brandUpdated": "Brand updated successfully.",
+    "brandDeleted": "Brand deleted successfully.",
+    "brandNotFound": "That brand could not be found.",
+    "brandDuplicate": "A brand with this name already exists.",
+    "brandInUse": "This brand cannot be deleted while products are still assigned to it.",
+    "productListed": "Products loaded successfully.",
+    "productFetched": "Product loaded successfully.",
+    "productCreated": "Product created successfully.",
+    "productUpdated": "Product updated successfully.",
+    "productDeleted": "Product deleted successfully.",
+    "productNotFound": "That product could not be found.",
+    "productDuplicate": "A product with this SKU or barcode already exists.",
+    "invalidCategory": "The selected category does not exist.",
+    "invalidBrand": "The selected brand does not exist.",
+    "priceBelowCost": "The selling price cannot be lower than the cost price."
   }
 }

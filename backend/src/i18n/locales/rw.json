@@ -71,5 +71,33 @@
       "body": "Kwiyandikisha kwawe kwa {{plan}} ubu birakora ku gihe cyo kwishyura cya {{cycle}} kuri {{workspace}}. Urakoze guhitamo ShopCore.",
       "cta": "Reba kwishyura"
     }
+  },
+  "catalog": {
+    "categoryListed": "Ibyiciro byapakiwe neza.",
+    "categoryFetched": "Icyiciro cyapakiwe neza.",
+    "categoryCreated": "Icyiciro cyaremwe neza.",
+    "categoryUpdated": "Icyiciro cyavuguruwe neza.",
+    "categoryDeleted": "Icyiciro cyasibwe neza.",
+    "categoryNotFound": "Icyo cyiciro ntikibonetse.",
+    "categoryDuplicate": "Icyiciro gifite iri zina gisanzweho.",
+    "categoryInUse": "Iki cyiciro ntigishobora gusibwa mu gihe hari ibicuruzwa bikiri muri cyo.",
+    "brandListed": "Amazina y'ibirango yapakiwe neza.",
+    "brandFetched": "Ikirango cyapakiwe neza.",
+    "brandCreated": "Ikirango cyaremwe neza.",
+    "brandUpdated": "Ikirango cyavuguruwe neza.",
+    "brandDeleted": "Ikirango cyasibwe neza.",
+    "brandNotFound": "Icyo kirango ntikibonetse.",
+    "brandDuplicate": "Ikirango gifite iri zina gisanzweho.",
+    "brandInUse": "Iki kirango ntigishobora gusibwa mu gihe hari ibicuruzwa bikiri muri cyo.",
+    "productListed": "Ibicuruzwa byapakiwe neza.",
+    "productFetched": "Igicuruzwa cyapakiwe neza.",
+    "productCreated": "Igicuruzwa cyaremwe neza.",
+    "productUpdated": "Igicuruzwa cyavuguruwe neza.",
+    "productDeleted": "Igicuruzwa cyasibwe neza.",
+    "productNotFound": "Icyo gicuruzwa ntikibonetse.",
+    "productDuplicate": "Igicuruzwa gifite iyi SKU cyangwa iyi barcode gisanzweho.",
+    "invalidCategory": "Icyiciro wahisemo ntikibaho.",
+    "invalidBrand": "Ikirango wahisemo ntikibaho.",
+    "priceBelowCost": "Igiciro cyo kugurisha ntigishobora kuba munsi y'igiciro cy'ikiguzi."
   }
 }

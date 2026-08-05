@@ -384,6 +384,7 @@ model Brand {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, name])
   @@index([tenantId])
   @@map("brands")
 }
@@ -397,6 +398,7 @@ model Category {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, name])
   @@index([tenantId])
   @@map("categories")
 }
@@ -429,6 +431,11 @@ model Product {
   name            String    @db.VarChar(191)
   barcode         String?   @db.VarChar(64)
   sku             String?   @db.VarChar(64)
+  // categoryId/brandId are the source of truth. `category`/`categoryName`/
+  // `brand` are denormalised copies of the related row's name, kept for
+  // list-view performance and read directly by the existing UI. The product
+  // service writes all of them from the id in one place, so they cannot
+  // drift apart — never set them independently.
   category        String?   @db.VarChar(191)
   categoryId      String?   @map("category_id") @db.Char(36)
   categoryName    String?   @map("category_name") @db.VarChar(191)
@@ -457,6 +464,12 @@ model Product {
   purchaseItems   PurchaseItem[]
   saleItems       SaleItem[]
 
+  // A SKU and a barcode identify one product within a business. Unique per
+  // tenant, not globally: two businesses may legitimately stock the same
+  // barcode. MySQL permits repeated NULLs, so products without either are
+  // unaffected.
+  @@unique([tenantId, sku])
+  @@unique([tenantId, barcode])
   @@index([tenantId])
   @@map("products")
 }

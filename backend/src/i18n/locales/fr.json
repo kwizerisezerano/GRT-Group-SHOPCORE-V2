@@ -71,5 +71,33 @@
       "body": "Votre abonnement {{plan}} est désormais actif avec une périodicité {{cycle}} pour l'espace de travail {{workspace}}. Merci d'avoir choisi ShopCore.",
       "cta": "Voir la facturation"
     }
+  },
+  "catalog": {
+    "categoryListed": "Catégories chargées avec succès.",
+    "categoryFetched": "Catégorie chargée avec succès.",
+    "categoryCreated": "Catégorie créée avec succès.",
+    "categoryUpdated": "Catégorie mise à jour avec succès.",
+    "categoryDeleted": "Catégorie supprimée avec succès.",
+    "categoryNotFound": "Cette catégorie est introuvable.",
+    "categoryDuplicate": "Une catégorie portant ce nom existe déjà.",
+    "categoryInUse": "Cette catégorie ne peut pas être supprimée tant que des produits y sont associés.",
+    "brandListed": "Marques chargées avec succès.",
+    "brandFetched": "Marque chargée avec succès.",
+    "brandCreated": "Marque créée avec succès.",
+    "brandUpdated": "Marque mise à jour avec succès.",
+    "brandDeleted": "Marque supprimée avec succès.",
+    "brandNotFound": "Cette marque est introuvable.",
+    "brandDuplicate": "Une marque portant ce nom existe déjà.",
+    "brandInUse": "Cette marque ne peut pas être supprimée tant que des produits y sont associés.",
+    "productListed": "Produits chargés avec succès.",
+    "productFetched": "Produit chargé avec succès.",
+    "productCreated": "Produit créé avec succès.",
+    "productUpdated": "Produit mis à jour avec succès.",
+    "productDeleted": "Produit supprimé avec succès.",
+    "productNotFound": "Ce produit est introuvable.",
+    "productDuplicate": "Un produit avec ce SKU ou ce code-barres existe déjà.",
+    "invalidCategory": "La catégorie sélectionnée n'existe pas.",
+    "invalidBrand": "La marque sélectionnée n'existe pas.",
+    "priceBelowCost": "Le prix de vente ne peut pas être inférieur au prix de revient."
   }
 }

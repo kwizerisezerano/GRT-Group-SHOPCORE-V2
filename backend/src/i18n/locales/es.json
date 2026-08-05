@@ -71,5 +71,33 @@
       "body": "Su suscripción {{plan}} ya está activa con un ciclo de facturación {{cycle}} para el espacio de trabajo {{workspace}}. Gracias por elegir ShopCore.",
       "cta": "Ver facturación"
     }
+  },
+  "catalog": {
+    "categoryListed": "Categorías cargadas correctamente.",
+    "categoryFetched": "Categoría cargada correctamente.",
+    "categoryCreated": "Categoría creada correctamente.",
+    "categoryUpdated": "Categoría actualizada correctamente.",
+    "categoryDeleted": "Categoría eliminada correctamente.",
+    "categoryNotFound": "No se encontró esa categoría.",
+    "categoryDuplicate": "Ya existe una categoría con este nombre.",
+    "categoryInUse": "Esta categoría no se puede eliminar mientras tenga productos asignados.",
+    "brandListed": "Marcas cargadas correctamente.",
+    "brandFetched": "Marca cargada correctamente.",
+    "brandCreated": "Marca creada correctamente.",
+    "brandUpdated": "Marca actualizada correctamente.",
+    "brandDeleted": "Marca eliminada correctamente.",
+    "brandNotFound": "No se encontró esa marca.",
+    "brandDuplicate": "Ya existe una marca con este nombre.",
+    "brandInUse": "Esta marca no se puede eliminar mientras tenga productos asignados.",
+    "productListed": "Productos cargados correctamente.",
+    "productFetched": "Producto cargado correctamente.",
+    "productCreated": "Producto creado correctamente.",
+    "productUpdated": "Producto actualizado correctamente.",
+    "productDeleted": "Producto eliminado correctamente.",
+    "productNotFound": "No se encontró ese producto.",
+    "productDuplicate": "Ya existe un producto con este SKU o código de barras.",
+    "invalidCategory": "La categoría seleccionada no existe.",
+    "invalidBrand": "La marca seleccionada no existe.",
+    "priceBelowCost": "El precio de venta no puede ser inferior al precio de costo."
   }
 }

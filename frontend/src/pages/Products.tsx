@@ -62,10 +62,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { categories, brands, units } from "@/data/mockProducts";
+/*
+ * Categories and brands come from the backend (useCategories/useBrands ->
+ * /api/categories, /api/brands), not from a hardcoded list. Requirement F5:
+ * the frontend must hold no business data of its own.
+ *
+ * `units` remains a fixed vocabulary rather than tenant data - pcs, kg, box
+ * are units of measure, not records a business creates - so it stays a
+ * constant, defined here next to its only consumer.
+ */
+const MEASUREMENT_UNITS = [
+  "pcs",
+  "kg",
+  "g",
+  "l",
+  "ml",
+  "box",
+  "pack",
+  "carton",
+  "dozen",
+  "bottle",
+  "bag",
+  "roll",
+  "metre",
+] as const;
 import {
   useProducts,
   useProductMutations,
+  useCategories,
+  useBrands,
   type DbProduct,
 } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
@@ -362,6 +387,9 @@ export default function Products() {
   const { data: products = [], isLoading } = useProducts();
   const { create, update } = useProductMutations();
   const queryClient = useQueryClient();
+  // Tenant catalogue master data, used to seed the filter/select options.
+  const { data: categoryRecords } = useCategories();
+  const { data: brandRecords } = useBrands();
 
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
@@ -393,20 +421,27 @@ export default function Products() {
     [products],
   );
 
+  // Seeded from the tenant's own catalogue, then widened with anything the
+  // existing products already use, so a value entered before the master
+  // record existed still appears in the filter.
   const uniqueBrands = useMemo(() => {
-    const values = new Set<string>(brands);
+    const values = new Set<string>(
+      (brandRecords ?? []).map((b: any) => String(b?.name ?? "")).filter(Boolean),
+    );
     visibleProducts.forEach((p) => p.brand && values.add(p.brand));
     return [...values].filter(Boolean).sort();
-  }, [visibleProducts]);
+  }, [visibleProducts, brandRecords]);
 
   const uniqueCategories = useMemo(() => {
-    const values = new Set<string>(categories);
+    const values = new Set<string>(
+      (categoryRecords ?? []).map((c: any) => String(c?.name ?? "")).filter(Boolean),
+    );
     visibleProducts.forEach((p) => p.category && values.add(p.category));
     return [...values].filter(Boolean).sort();
-  }, [visibleProducts]);
+  }, [visibleProducts, categoryRecords]);
 
   const uniqueUnits = useMemo(() => {
-    const values = new Set<string>(units);
+    const values = new Set<string>(MEASUREMENT_UNITS);
     visibleProducts.forEach((p) => p.unit && values.add(p.unit));
     return [...values].filter(Boolean).sort();
   }, [visibleProducts]);
