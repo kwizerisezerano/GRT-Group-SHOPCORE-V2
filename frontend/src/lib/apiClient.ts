@@ -340,6 +340,32 @@ export const customersApi = createCrudApi<Record<string, unknown>>("customers");
 export const suppliersApi = createCrudApi<Record<string, unknown>>("suppliers");
 export const expensesApi = createCrudApi<Record<string, unknown>>("expenses");
 
+/**
+ * Sales are transactional, not CRUD: a checkout writes a header, its line
+ * items and a stock movement per product atomically, and there is no update
+ * or delete. Only the operations the backend actually offers are exposed.
+ */
+export const salesApi = {
+  async list(): Promise<{ data: Record<string, unknown>[] }> {
+    return { data: (await request("/sales", { method: "GET", auth: true })) as Record<string, unknown>[] };
+  },
+  async get(id: string) {
+    return request(`/sales/${id}`, { method: "GET", auth: true });
+  },
+  /** Server prices every line from the catalogue and derives all totals. */
+  async checkout(input: {
+    items: { product_id: string; quantity: number; unit_price?: number; discount?: number }[];
+    customer_name?: string | null;
+    payment_method?: string;
+    paid?: number;
+    discount?: number;
+    branch?: string | null;
+    notes?: string | null;
+  }) {
+    return request("/sales", { method: "POST", body: input, auth: true });
+  },
+};
+
 /** The signed-in user's own profile — one row, addressed by the token. */
 export const profileApi = {
   async get() {

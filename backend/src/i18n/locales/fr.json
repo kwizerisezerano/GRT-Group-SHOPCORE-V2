@@ -129,5 +129,13 @@
     "updated": "Votre profil a été mis à jour avec succès.",
     "notFound": "Votre profil est introuvable.",
     "phoneTaken": "Ce numéro de téléphone est déjà utilisé par un autre compte."
+  },
+  "sales": {
+    "listed": "Ventes chargées avec succès.",
+    "fetched": "Vente chargée avec succès.",
+    "created": "Vente finalisée avec succès.",
+    "notFound": "Cette vente est introuvable.",
+    "unknownProduct": "Un ou plusieurs produits de cette vente sont introuvables.",
+    "insufficientStock": "Stock insuffisant pour {{product}} — {{available}} disponible(s), {{requested}} demandé(s)."
   }
 }

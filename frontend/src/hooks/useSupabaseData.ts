@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   brandsApi,
+  salesApi,
   categoriesApi,
   customersApi,
   expensesApi,
@@ -841,30 +842,7 @@ export function useProductMutations() {
 
 
 export function useSales() {
-  const { user, tenantId, session } = useAuth();
-  return useQuery({
-    queryKey: ["sales", tenantId, queryModeKey(session), localDataVersionKey()],
-    enabled: !!user && !!tenantId,
-    staleTime: queryIsOnline(session) ? 0 : 1000 * 60 * 5,
-    retry: 0,
-    refetchOnReconnect: queryIsOnline(session),
-    refetchOnWindowFocus: queryIsOnline(session),
-    networkMode: queryIsOnline(session) ? "online" : "always",
-    queryFn: async () => {
-      if (!hasOnlineSession(session)) return await getCachedSortedTable<DbSale>("sales");
-      try {
-        const { data, error } = await (supabase as any).from("sales").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
-        if (error) throw error;
-        const merged = await mergeOnlineTableWithPending<DbSale>("sales", data || []);
-        await saveCachedTable("sales", merged);
-        return merged;
-      } catch (error) {
-        const cached = await getCachedSortedTable<DbSale>("sales");
-        if (cached.length > 0 || shouldFallbackToCache(error)) return cached;
-        throw error;
-      }
-    },
-  });
+  return useApiTable<DbSale>("sales", salesApi as never);
 }
 
 export function useSaleMutations() {

@@ -129,5 +129,13 @@
     "updated": "Umwirondoro wawe wavuguruwe neza.",
     "notFound": "Umwirondoro wawe ntiwabonetse.",
     "phoneTaken": "Iyo nimero ya telefone isanzwe ikoreshwa na konti indi."
+  },
+  "sales": {
+    "listed": "Ibyagurishijwe byapakiwe neza.",
+    "fetched": "Icyagurishijwe cyapakiwe neza.",
+    "created": "Kugurisha byarangiye neza.",
+    "notFound": "Icyo cyagurishijwe ntikibonetse.",
+    "unknownProduct": "Igicuruzwa kimwe cyangwa byinshi muri iri gurisha ntibyabonetse.",
+    "insufficientStock": "Nta bicuruzwa bihagije bya {{product}} — hari {{available}}, wasabye {{requested}}."
   }
 }

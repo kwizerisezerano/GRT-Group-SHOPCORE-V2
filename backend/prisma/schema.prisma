@@ -168,6 +168,7 @@ model Tenant {
   qaScreenshots    QaScreenshot[]
   qaSettings       QaSetting[]
   saleItems        SaleItem[]
+  stockMovements   StockMovement[]
   suppliers        Supplier[]
   staff            Staff[]
 
@@ -647,9 +648,11 @@ model ExpiredProduct {
 
 model StockMovement {
   id             String   @id @default(uuid()) @db.Char(36)
-  // Source Postgres column is `text`, not `uuid`, and this table has no
-  // tenant_id/FKs at all — preserved faithfully rather than "fixed", since
-  // that redesign belongs to whichever phase actually builds this module out.
+  // tenantId added when the sales module was built. Without it this table was
+  // invisible to the tenant-scoping extension (lib/tenantScope.ts derives its
+  // model list from the presence of this field), so every read and write ran
+  // unscoped and one business could see another's stock history.
+  tenantId       String   @map("tenant_id") @db.Char(36)
   productId      String?  @map("product_id") @db.VarChar(191)
   productName    String?  @map("product_name") @db.VarChar(191)
   movementType   String   @map("movement_type") @db.VarChar(32)
@@ -662,6 +665,10 @@ model StockMovement {
   userId         String?  @map("user_id") @db.Char(36)
   createdAt      DateTime @default(now()) @map("created_at")
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId])
   @@map("stock_movements")
 }
 

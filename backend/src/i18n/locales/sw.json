@@ -129,5 +129,13 @@
     "updated": "Wasifu wako umesasishwa kwa mafanikio.",
     "notFound": "Wasifu wako haukupatikana.",
     "phoneTaken": "Nambari hiyo ya simu tayari inatumiwa na akaunti nyingine."
+  },
+  "sales": {
+    "listed": "Mauzo yamepakiwa kwa mafanikio.",
+    "fetched": "Mauzo yamepakiwa kwa mafanikio.",
+    "created": "Mauzo yamekamilika kwa mafanikio.",
+    "notFound": "Mauzo hayo hayakupatikana.",
+    "unknownProduct": "Bidhaa moja au zaidi katika mauzo haya hazikupatikana.",
+    "insufficientStock": "Hakuna hisa ya kutosha ya {{product}} — {{available}} zinapatikana, {{requested}} zimeombwa."
   }
 }

@@ -129,5 +129,13 @@
     "updated": "Su perfil se actualizó correctamente.",
     "notFound": "No se encontró su perfil.",
     "phoneTaken": "Ese número de teléfono ya lo usa otra cuenta."
+  },
+  "sales": {
+    "listed": "Ventas cargadas correctamente.",
+    "fetched": "Venta cargada correctamente.",
+    "created": "Venta completada correctamente.",
+    "notFound": "No se encontró esa venta.",
+    "unknownProduct": "No se encontraron uno o más productos de esta venta.",
+    "insufficientStock": "Stock insuficiente de {{product}}: {{available}} disponible(s), {{requested}} solicitado(s)."
   }
 }

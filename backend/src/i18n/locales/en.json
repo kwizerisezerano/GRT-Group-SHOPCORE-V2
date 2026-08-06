@@ -129,5 +129,13 @@
     "updated": "Your profile was updated successfully.",
     "notFound": "Your profile could not be found.",
     "phoneTaken": "That phone number is already used by another account."
+  },
+  "sales": {
+    "listed": "Sales loaded successfully.",
+    "fetched": "Sale loaded successfully.",
+    "created": "Sale completed successfully.",
+    "notFound": "That sale could not be found.",
+    "unknownProduct": "One or more products in this sale could not be found.",
+    "insufficientStock": "Not enough stock for {{product}} — {{available}} available, {{requested}} requested."
   }
 }
