@@ -209,3 +209,43 @@ backend, so with the stack up you can watch the full path work:
 Emails are printed to the backend log rather than sent while `RESEND_API_KEY`
 is empty, so the whole notification path is exercised locally with no provider
 account and no risk of mailing a real person from a dev database.
+
+---
+
+## 10. Login or registration failing? Run the doctor first
+
+```bash
+cd backend && npm run doctor
+```
+
+It checks the whole chain — env completeness, key validity, database
+reachability, migration state, seeded plans, and whether any account predates
+the encryption migration — and prints the exact command to fix whatever it
+finds. Use it before reading logs.
+
+**The most common cause by far:** a `backend/.env` written before
+`ENCRYPTION_KEY` and `BLIND_INDEX_KEY` existed. Those are required with no
+fallback, so the server **exits at boot**. The API then answers nothing at all,
+and the browser reports login as a failed/CORS request with no status code —
+which looks like a frontend bug but is a backend that never started.
+
+`./scripts/dev-up.sh` now backfills missing secrets into an existing `.env`. It
+will never overwrite one that already has a value: `ENCRYPTION_KEY` is what
+every encrypted column was written with, so replacing it would turn readable
+data into ciphertext nobody can open. A key that is present but malformed is
+reported by the doctor for a human to decide about.
+
+**Second most common:** accounts created before the encryption migration. Login
+looks a user up by their email blind index, and those rows have none, so no
+password will ever match. The doctor counts them. In development:
+
+```bash
+./scripts/dev-up.sh --reset     # drop, recreate, migrate, seed
+```
+
+**Third:** a stale frontend bundle. Vite caches aggressively, so a pull can
+leave the old code running:
+
+```bash
+rm -rf frontend/node_modules/.vite && ./scripts/dev-up.sh
+```

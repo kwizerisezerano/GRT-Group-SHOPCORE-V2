@@ -88,6 +88,31 @@ if [[ ! -f .env ]]; then
   sed -i "s|^BLIND_INDEX_KEY=.*|BLIND_INDEX_KEY=\"$(openssl rand -hex 32)\"|" .env
   sed -i "s|^RESEND_API_KEY=.*|RESEND_API_KEY=\"\"|" .env
   ok "generated .env with fresh keys"
+else
+  # Repair, don't just create. A .env written before a secret was introduced
+  # is the worst failure mode this project has: the server exits at boot with
+  # a message only visible in its own log, so the API never answers and every
+  # request — login included — fails with nothing to go on. Backfilling the
+  # missing keys here means pulling new work never leaves a dead backend.
+  #
+  # Only ever fills in a key that is absent or blank. It must never replace a
+  # key that already holds a value, even a malformed one: ENCRYPTION_KEY is
+  # what every encrypted column was written with, so overwriting it silently
+  # turns readable data into ciphertext nobody can open. A key that is present
+  # but wrong is reported by `npm run doctor` for a human to judge, not
+  # rewritten here.
+  added=()
+  for key in JWT_ACCESS_SECRET JWT_REFRESH_SECRET ENCRYPTION_KEY BLIND_INDEX_KEY; do
+    current=$(sed -nE "s/^\s*${key}\s*=\s*\"?([^\"]*)\"?\s*$/\1/p" .env | head -1)
+    if [[ -z "$current" ]]; then
+      sed -i "/^\s*${key}\s*=/d" .env   # drop a blank/placeholder line
+      printf '%s="%s"\n' "$key" "$(openssl rand -hex 32)" >> .env
+      added+=("$key")
+    fi
+  done
+  if [[ ${#added[@]} -gt 0 ]]; then
+    ok "added missing secrets to existing .env: ${added[*]}"
+  fi
 fi
 
 npx prisma generate >/dev/null 2>&1
