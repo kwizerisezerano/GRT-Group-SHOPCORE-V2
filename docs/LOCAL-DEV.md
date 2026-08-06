@@ -249,3 +249,48 @@ leave the old code running:
 ```bash
 rm -rf frontend/node_modules/.vite && ./scripts/dev-up.sh
 ```
+
+---
+
+## 11. Windows (PowerShell)
+
+`dev-up.sh` is bash. On Windows use the PowerShell version:
+
+```powershell
+.\scripts\dev-up.ps1
+.\scripts\dev-up.ps1 -Reset     # drop and recreate the database first
+```
+
+It finds XAMPP's MySQL automatically, creates the database, repairs `.env`,
+migrates, seeds, and opens the backend and frontend each in their own window —
+leave both open.
+
+**Windows PowerShell 5.1 does not support `&&`.** This fails:
+
+```powershell
+cd backend && npm run doctor      # The token '&&' is not a valid statement separator
+```
+
+Use two statements, or `;`:
+
+```powershell
+cd backend
+npm run doctor
+```
+
+**Running the two servers by hand** needs two terminals. One is not enough —
+the frontend dev server does not start the backend, it only proxies to it:
+
+```powershell
+# terminal 1
+cd backend
+npm run dev        # must stay running, listens on :4000
+
+# terminal 2
+cd frontend
+npm run dev        # :5173, proxies /api to :4000
+```
+
+`ECONNREFUSED 127.0.0.1:4000` in the frontend terminal means terminal 1 is not
+running, or its server exited. Check that window: if it exited at startup,
+`npm run doctor` in `backend/` will say why.

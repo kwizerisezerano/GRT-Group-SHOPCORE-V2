@@ -130,11 +130,30 @@ async function rawRequest(path: string, options: { method: string; body?: unknow
     if (stored?.accessToken) headers.Authorization = `Bearer ${stored.accessToken}`;
   }
 
-  const response = await fetch(`${apiBaseUrl()}/api${path}`, {
-    method: options.method,
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}/api${path}`, {
+      method: options.method,
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (cause) {
+    /*
+     * fetch only rejects when the request never reached a server: the API is
+     * down, the dev proxy has nothing to forward to, or the network is gone.
+     * The browser reports that as an opaque failed/CORS request with no
+     * status, which reads as a frontend bug and sends people looking in the
+     * wrong place. Say what actually happened instead.
+     */
+    throw new ApiError(
+      0,
+      "api_unreachable",
+      navigator.onLine === false
+        ? "You appear to be offline. Changes will sync when the connection returns."
+        : "Cannot reach the ShopCore API. Make sure the backend is running — see docs/LOCAL-DEV.md.",
+      { cause: String(cause) },
+    );
+  }
 
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
