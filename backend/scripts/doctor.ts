@@ -139,8 +139,13 @@ async function checkDatabase() {
   }
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    record("ok", "MySQL is reachable");
+    const [version] = await prisma.$queryRawUnsafe<{ v: string }[]>("SELECT VERSION() AS v");
+    const banner = String(version?.v ?? "unknown");
+    // XAMPP ships MariaDB, not MySQL. Worth naming, because "MySQL" in the
+    // XAMPP control panel is MariaDB and the two behave differently enough
+    // that knowing which one is in front of you saves an hour.
+    const flavour = /maria/i.test(banner) ? "MariaDB" : "MySQL";
+    record("ok", `${flavour} reachable (${banner})`);
   } catch (error) {
     record(
       "fail",
@@ -154,11 +159,27 @@ async function checkDatabase() {
   }
 
   try {
-    const pending = await prisma.$queryRawUnsafe<{ c: bigint }[]>(
-      "SELECT COUNT(*) AS c FROM _prisma_migrations WHERE finished_at IS NULL"
+    const stuck = await prisma.$queryRawUnsafe<{ name: string; rolled_back_at: Date | null }[]>(
+      "SELECT migration_name AS name, rolled_back_at FROM _prisma_migrations WHERE finished_at IS NULL"
     );
-    if (Number(pending[0]?.c ?? 0) > 0) {
-      record("fail", "A migration is unfinished", undefined, "npx prisma migrate deploy");
+
+    if (stuck.length > 0) {
+      /*
+       * A migration that died partway leaves this row behind, and every later
+       * `migrate deploy` refuses with P3009 rather than retrying. The second
+       * failure is caused by the first, which makes it easy to chase the
+       * wrong thing.
+       */
+      record(
+        "fail",
+        `Migration "${stuck[0].name}" failed partway and is blocking all others`,
+        "Prisma will not apply new migrations while a failed one is recorded (P3009). " +
+          "The migrations themselves are verified against MySQL 8 and MariaDB 10.11, so this is " +
+          "almost always the database having dropped the connection mid-run, not bad SQL.",
+        "Rebuild the database (development only — this destroys its data):\n" +
+          "    .\\scripts\\dev-up.ps1 -Reset        (Windows)\n" +
+          "    ./scripts/dev-up.sh --reset          (Linux/macOS)"
+      );
     } else {
       record("ok", "Migrations are applied");
     }

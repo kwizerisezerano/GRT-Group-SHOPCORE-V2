@@ -122,7 +122,7 @@ try {
     if (-not (Test-Path '.env')) {
         Copy-Item '.env.example' '.env'
         $env_lines = Get-Content '.env'
-        $env_lines = $env_lines -replace '^DATABASE_URL=.*', "DATABASE_URL=`"mysql://root@127.0.0.1:3306/$DbName`""
+        $env_lines = $env_lines -replace '^DATABASE_URL=.*', "DATABASE_URL=`"mysql://root@127.0.0.1:3306/$DbName" + "?connect_timeout=30&pool_timeout=30&socket_timeout=60`""
         $env_lines = $env_lines -replace '^RESEND_API_KEY=.*', 'RESEND_API_KEY=""'
         Set-Content '.env' $env_lines
         Write-Ok 'created .env'
@@ -161,8 +161,54 @@ try {
     }
 
     npx prisma generate | Out-Null
-    npx prisma migrate deploy | Out-Null
-    if ($LASTEXITCODE -ne 0) { Fail 'prisma migrate deploy failed' }
+
+    #
+    # A migration that dies partway (XAMPP's MariaDB dropping the connection
+    # mid-run shows up as P1017) leaves a failed row in _prisma_migrations.
+    # Every later `migrate deploy` then refuses with P3009 and the setup is
+    # stuck for good — the second run reports a problem caused by the first,
+    # which is a miserable thing to debug.
+    #
+    # In development the honest recovery is to rebuild the database, so that
+    # is offered here rather than left as a puzzle. Nothing is destroyed
+    # without saying so.
+    #
+    $migrateOutput = (npx prisma migrate deploy 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        if ($migrateOutput -match 'P3009') {
+            Write-Warn 'A previous migration failed partway and is blocking new ones.'
+            Write-Host  '     The database will be dropped and rebuilt. Any data in it is lost.' -ForegroundColor Yellow
+            $answer = Read-Host '     Rebuild it now? (y/N)'
+            if ($answer -eq 'y' -or $answer -eq 'Y') {
+                "DROP DATABASE IF EXISTS $DbName;" | & $MysqlExe $MysqlArgs
+                "CREATE DATABASE $DbName CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" | & $MysqlExe $MysqlArgs
+                $migrateOutput = (npx prisma migrate deploy 2>&1 | Out-String)
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host $migrateOutput
+                    Fail 'migrate deploy still failing after rebuild - see the output above'
+                }
+                Write-Ok 'database rebuilt'
+            } else {
+                Fail "Left as-is. Re-run with -Reset when you are ready to rebuild."
+            }
+        } elseif ($migrateOutput -match 'P1017') {
+            Write-Host $migrateOutput
+            Fail @'
+MySQL closed the connection during the migration.
+
+  The migrations themselves are fine - they are verified against both MySQL 8
+  and MariaDB 10.11 - so this is the server dropping out, not bad SQL.
+
+  Check XAMPP's error log:
+    C:\xampp\mysql\data\mysql_error.log
+
+  Then re-run this script. It will offer to rebuild the half-migrated database.
+'@
+        } else {
+            Write-Host $migrateOutput
+            Fail 'prisma migrate deploy failed - see the output above'
+        }
+    }
     Write-Ok 'migrations applied'
 
     npx prisma db seed | Out-Null

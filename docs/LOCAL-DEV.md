@@ -294,3 +294,40 @@ npm run dev        # :5173, proxies /api to :4000
 `ECONNREFUSED 127.0.0.1:4000` in the frontend terminal means terminal 1 is not
 running, or its server exited. Check that window: if it exited at startup,
 `npm run doctor` in `backend/` will say why.
+
+---
+
+## 12. XAMPP is MariaDB, not MySQL
+
+The XAMPP control panel labels it "MySQL", but the server underneath is
+MariaDB. Both are supported — the migrations and seed are verified against
+**MySQL 8.0.46** and **MariaDB 10.11**, all 36 tables and 4 migrations, on
+both. `npm run doctor` prints which one you actually have.
+
+### `P1017: Server has closed the connection`
+
+The database dropped the connection partway through a migration. It is not a
+SQL problem — the same migrations apply cleanly to both engines. Look at
+XAMPP's own log:
+
+```
+C:\xampp\mysql\data\mysql_error.log
+```
+
+A crash or restart around the timestamp confirms it.
+
+### `P3009: migrate found failed migrations`
+
+The knock-on effect of the above, and the more confusing of the two: the
+*first* run failed partway and left a failed row in `_prisma_migrations`, so
+every later run refuses before doing anything. The second error is caused by
+the first.
+
+`dev-up.ps1` now detects this, explains it, and offers to rebuild. Or do it
+yourself:
+
+```powershell
+.\scripts\dev-up.ps1 -Reset
+```
+
+`npm run doctor` also reports it by name, with the migration that is stuck.
