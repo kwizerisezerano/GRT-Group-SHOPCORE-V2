@@ -44,11 +44,22 @@ wait_for() { # wait_for <seconds> <description> <command...>
 # ---------------------------------------------------------------- MySQL ----
 say "MySQL"
 if ! mysqladmin ping --silent >/dev/null 2>&1; then
-  command -v mysqld >/dev/null 2>&1 || die "mysqld not installed (apt-get install mysql-server)"
+  # Either engine is fine: the migrations and seed are verified against
+  # MySQL 8 and MariaDB 10.11, and XAMPP on Windows ships MariaDB.
+  SERVER=""
+  command -v mysqld    >/dev/null 2>&1 && SERVER=mysqld
+  command -v mariadbd  >/dev/null 2>&1 && SERVER=mariadbd
+  [[ -n "$SERVER" ]] || die "no database server installed (apt-get install mysql-server | mariadb-server)"
+
   mkdir -p /var/run/mysqld /var/log/mysql
   chown -R mysql:mysql /var/run/mysqld /var/log/mysql /var/lib/mysql 2>/dev/null || true
+
   # setsid detaches from this shell's process group so the server outlives it.
-  setsid nohup mysqld --user=mysql --daemonize >"$LOG_DIR/mysqld.log" 2>&1 </dev/null || true
+  if [[ "$SERVER" == "mysqld" ]]; then
+    setsid nohup mysqld --user=mysql --daemonize >"$LOG_DIR/mysqld.log" 2>&1 </dev/null || true
+  else
+    setsid nohup mariadbd --user=mysql >"$LOG_DIR/mysqld.log" 2>&1 </dev/null &
+  fi
   wait_for 90 "mysqld" mysqladmin ping --silent
 fi
 ok "running ($(mysql -uroot -sN -e 'SELECT VERSION()' 2>/dev/null || echo 'version unknown'))"

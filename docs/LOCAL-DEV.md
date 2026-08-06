@@ -331,3 +331,11 @@ yourself:
 ```
 
 `npm run doctor` also reports it by name, with the migration that is stuck.
+
+Or clear it yourself with Prisma's own command — no script involved. It drops,
+re-migrates and re-seeds in one step:
+
+```powershell
+cd backend
+npx prisma migrate reset --force
+```

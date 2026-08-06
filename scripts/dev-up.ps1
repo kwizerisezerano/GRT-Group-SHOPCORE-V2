@@ -35,6 +35,36 @@ function Write-Ok  ($Message) { Write-Host "  ok $Message" -ForegroundColor Gree
 function Write-Warn($Message) { Write-Host "  ! $Message"  -ForegroundColor Yellow }
 function Fail      ($Message) { Write-Host "  !! $Message" -ForegroundColor Red; exit 1 }
 
+<#
+    Runs a native command (npm, npx, mysql) and returns its combined output
+    and exit code without letting it kill the script.
+
+    This exists because of a genuine PowerShell trap: with
+    $ErrorActionPreference = 'Stop', redirecting a native command's stderr
+    with 2>&1 turns each stderr line into a *terminating* NativeCommandError.
+    Tools like Prisma write their errors to stderr, so the script died on the
+    redirect itself — before any code could read the exit code and explain
+    what went wrong. The error surfaced as:
+
+        node.exe : Error: P3009
+        + FullyQualifiedErrorId : NativeCommandError
+
+    which describes PowerShell's reaction, not the actual problem. Dropping to
+    'Continue' for the duration of the call keeps stderr as plain text.
+#>
+function Invoke-Native {
+    param([Parameter(Mandatory = $true)][scriptblock]$Command)
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & $Command 2>&1 | Out-String
+        return [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 # 32 random bytes as 64 hex characters — same shape as `openssl rand -hex 32`.
 function New-HexKey {
     $bytes = New-Object byte[] 32
@@ -88,10 +118,9 @@ Write-Ok "using $MysqlExe"
 # not hit the auth_socket problem the Linux script works around.
 $MysqlArgs = @('-uroot')
 
-try {
-    'SELECT 1;' | & $MysqlExe $MysqlArgs 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'connect failed' }
-} catch {
+$probe = Invoke-Native { 'SELECT 1;' | & $MysqlExe $MysqlArgs }
+if ($probe.ExitCode -ne 0) {
+    Write-Host $probe.Output
     Fail "Cannot connect to MySQL as root. Is it running? In XAMPP Control Panel, press Start next to MySQL."
 }
 Write-Ok 'reachable'
@@ -99,7 +128,7 @@ Write-Ok 'reachable'
 # --------------------------------------------------------------- Database ---
 Write-Step 'Database'
 if ($Reset) {
-    "DROP DATABASE IF EXISTS $DbName;" | & $MysqlExe $MysqlArgs
+    $null = Invoke-Native { "DROP DATABASE IF EXISTS $DbName;" | & $MysqlExe $MysqlArgs }
     Write-Ok "dropped $DbName"
 }
 
@@ -107,7 +136,7 @@ $createSql = @"
 CREATE DATABASE IF NOT EXISTS $DbName CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS ${DbName}_shadow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 "@
-$createSql | & $MysqlExe $MysqlArgs
+$null = Invoke-Native { $createSql | & $MysqlExe $MysqlArgs }
 Write-Ok "$DbName ready"
 
 # ---------------------------------------------------------------- Backend ---
@@ -115,7 +144,8 @@ Write-Step 'Backend'
 Push-Location $Backend
 try {
     if (-not (Test-Path 'node_modules')) {
-        npm install --silent
+        $install = Invoke-Native { npm install --silent }
+        if ($install.ExitCode -ne 0) { Write-Host $install.Output; Fail 'npm install failed' }
         Write-Ok 'installed dependencies'
     }
 
@@ -160,7 +190,7 @@ try {
         Write-Ok "added missing secrets to .env: $($added -join ', ')"
     }
 
-    npx prisma generate | Out-Null
+    $null = Invoke-Native { npx prisma generate }
 
     #
     # A migration that dies partway (XAMPP's MariaDB dropping the connection
@@ -173,18 +203,19 @@ try {
     # is offered here rather than left as a puzzle. Nothing is destroyed
     # without saying so.
     #
-    $migrateOutput = (npx prisma migrate deploy 2>&1 | Out-String)
-    if ($LASTEXITCODE -ne 0) {
+    $migrate = Invoke-Native { npx prisma migrate deploy }
+    $migrateOutput = $migrate.Output
+    if ($migrate.ExitCode -ne 0) {
         if ($migrateOutput -match 'P3009') {
             Write-Warn 'A previous migration failed partway and is blocking new ones.'
             Write-Host  '     The database will be dropped and rebuilt. Any data in it is lost.' -ForegroundColor Yellow
             $answer = Read-Host '     Rebuild it now? (y/N)'
             if ($answer -eq 'y' -or $answer -eq 'Y') {
-                "DROP DATABASE IF EXISTS $DbName;" | & $MysqlExe $MysqlArgs
-                "CREATE DATABASE $DbName CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" | & $MysqlExe $MysqlArgs
-                $migrateOutput = (npx prisma migrate deploy 2>&1 | Out-String)
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Host $migrateOutput
+                $null = Invoke-Native { "DROP DATABASE IF EXISTS $DbName;" | & $MysqlExe $MysqlArgs }
+                $null = Invoke-Native { "CREATE DATABASE $DbName CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" | & $MysqlExe $MysqlArgs }
+                $retry = Invoke-Native { npx prisma migrate deploy }
+                if ($retry.ExitCode -ne 0) {
+                    Write-Host $retry.Output
                     Fail 'migrate deploy still failing after rebuild - see the output above'
                 }
                 Write-Ok 'database rebuilt'
@@ -211,7 +242,7 @@ MySQL closed the connection during the migration.
     }
     Write-Ok 'migrations applied'
 
-    npx prisma db seed | Out-Null
+    $null = Invoke-Native { npx prisma db seed }
     Write-Ok 'seeded reference data'
 } finally {
     Pop-Location
@@ -232,7 +263,8 @@ Write-Step 'Frontend'
 Push-Location $Frontend
 try {
     if (-not (Test-Path 'node_modules')) {
-        npm install --silent
+        $install = Invoke-Native { npm install --silent }
+        if ($install.ExitCode -ne 0) { Write-Host $install.Output; Fail 'npm install failed' }
         Write-Ok 'installed dependencies'
     }
     if (-not (Test-Path '.env')) {
