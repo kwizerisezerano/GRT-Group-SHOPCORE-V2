@@ -159,6 +159,7 @@ model Tenant {
   customers        Customer[]
   expenses         Expense[]
   expiredProducts  ExpiredProduct[]
+  invoiceCounters  InvoiceCounter[]
   products         Product[]
   purchases        Purchase[]
   qaAuditLogs      QaAuditLog[]
@@ -509,7 +510,15 @@ model Sale {
   tenantId      String   @map("tenant_id") @db.Char(36)
   invoiceNo     String   @map("invoice_no") @db.VarChar(64)
   saleNo        String?  @map("sale_no") @db.VarChar(64)
+  receiptNo     String?  @map("receipt_no") @db.VarChar(64)
   customerName  String?  @map("customer_name") @db.VarChar(191)
+  // A walk-in customer's phone and tax number are personal data just as much
+  // as a registered customer's, so they get the same treatment as everywhere
+  // else: AES-256-GCM at rest, with a blind index on the phone so a shop can
+  // still look a buyer up by number. Not unique — one person may buy twice.
+  customerPhoneEncrypted String? @map("customer_phone_encrypted") @db.VarChar(512)
+  customerPhoneHash      String? @map("customer_phone_hash") @db.Char(64)
+  customerTinEncrypted   String? @map("customer_tin_encrypted") @db.VarChar(512)
   items         Int      @default(0)
   subtotal      Decimal  @default(0) @db.Decimal(14, 2)
   tax           Decimal  @default(0) @db.Decimal(14, 2)
@@ -517,11 +526,29 @@ model Sale {
   total         Decimal  @default(0) @db.Decimal(14, 2)
   paid          Decimal  @default(0) @db.Decimal(14, 2)
   due           Decimal  @default(0) @db.Decimal(14, 2)
+  changeGiven   Decimal  @default(0) @map("change_given") @db.Decimal(14, 2)
+  // Margin is stored, not recomputed on read: cost prices move, and a sale's
+  // profit is a fact about the moment it happened.
+  costTotal     Decimal  @default(0) @map("cost_total") @db.Decimal(14, 2)
+  grossProfit   Decimal  @default(0) @map("gross_profit") @db.Decimal(14, 2)
   paymentMethod String?  @map("payment_method") @db.VarChar(32)
+  // Mobile-money reference. The number is a phone number, so it is encrypted;
+  // the transaction code is not personal data and stays readable for
+  // reconciliation against the provider's statement.
+  momoNumberEncrypted String? @map("momo_number_encrypted") @db.VarChar(512)
+  momoCode            String? @map("momo_code") @db.VarChar(64)
   status        String?  @default("completed") @db.VarChar(32)
   branch        String?  @db.VarChar(191)
   cashier       String?  @db.VarChar(191)
   notes         String?  @db.Text
+  // Rwanda EBM fiscalisation. Written by the EBM submission flow after the
+  // sale exists, which is why every field is nullable.
+  ebmStatus           String?   @default("not_configured") @map("ebm_status") @db.VarChar(32)
+  ebmInvoiceNo        String?   @map("ebm_invoice_no") @db.VarChar(64)
+  ebmReceiptNo        String?   @map("ebm_receipt_no") @db.VarChar(64)
+  ebmQrCode           String?   @map("ebm_qr_code") @db.Text
+  ebmVerificationCode String?   @map("ebm_verification_code") @db.VarChar(191)
+  ebmSyncedAt         DateTime? @map("ebm_synced_at")
   userId        String?  @map("user_id") @db.Char(36)
   date          DateTime @default(now())
   createdAt     DateTime @default(now()) @map("created_at")
@@ -530,7 +557,31 @@ model Sale {
   creditedItems CreditedItem[]
 
   @@index([tenantId])
+  @@index([customerPhoneHash])
+  // Two sales sharing an invoice number is an accounting record that cannot
+  // be reconciled, so the database refuses it rather than trusting the
+  // allocator to be right. Per tenant: two businesses may both have INV-0001.
+  @@unique([tenantId, invoiceNo])
   @@map("sales")
+}
+
+/// One row per tenant per day, holding the last invoice number handed out.
+///
+/// Sequential invoice numbers used to be derived from "how many sales exist
+/// today", which is only correct while requests arrive one at a time: two
+/// concurrent checkouts both read the same count and both claim it. A counter
+/// incremented inside the sale's own transaction cannot do that — the row lock
+/// makes allocation serial, which is what sequential numbering means, and a
+/// rolled-back sale gives its number back so the sequence stays gapless.
+model InvoiceCounter {
+  tenantId  String @map("tenant_id") @db.Char(36)
+  period    String @db.VarChar(16)
+  lastValue Int    @default(0) @map("last_value")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, period])
+  @@map("invoice_counters")
 }
 
 model SaleItem {
@@ -542,10 +593,16 @@ model SaleItem {
   sku         String?  @db.VarChar(64)
   quantity    Int      @default(1)
   unitPrice   Decimal  @default(0) @map("unit_price") @db.Decimal(14, 2)
+  // Cost is captured per line at the time of sale, so margin reporting is not
+  // rewritten by a later change to the product's cost price.
+  unitCost    Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 2)
   discount    Decimal  @default(0) @db.Decimal(14, 2)
   tax         Decimal  @default(0) @db.Decimal(14, 2)
   subtotal    Decimal  @default(0) @db.Decimal(14, 2)
   total       Decimal  @default(0) @db.Decimal(14, 2)
+  costTotal   Decimal  @default(0) @map("cost_total") @db.Decimal(14, 2)
+  grossProfit Decimal  @default(0) @map("gross_profit") @db.Decimal(14, 2)
+  batchId     String?  @map("batch_id") @db.Char(36)
   createdAt   DateTime @default(now()) @map("created_at")
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)

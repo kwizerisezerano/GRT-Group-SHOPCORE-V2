@@ -1,4 +1,5 @@
 import { LANGUAGE_STORAGE_KEY } from "@/i18n/storage";
+import { markNetworkReachable, markNetworkUnreachable } from "@/lib/offlineStore";
 
 const TOKENS_KEY = "shopcore_auth_tokens";
 
@@ -145,6 +146,14 @@ async function rawRequest(path: string, options: { method: string; body?: unknow
      * status, which reads as a frontend bug and sends people looking in the
      * wrong place. Say what actually happened instead.
      */
+    /*
+     * This is the only place allowed to declare the application offline.
+     * The offline engine used to infer it from any failing request anywhere,
+     * which meant one unconfigured third-party host was enough to make the
+     * till queue sales locally while the backend was up and answering.
+     */
+    markNetworkUnreachable();
+
     throw new ApiError(
       0,
       "api_unreachable",
@@ -154,6 +163,9 @@ async function rawRequest(path: string, options: { method: string; body?: unknow
       { cause: String(cause) },
     );
   }
+
+  // A reply of any kind — including a 4xx — proves the API was reached.
+  markNetworkReachable();
 
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
@@ -364,6 +376,37 @@ export const expensesApi = createCrudApi<Record<string, unknown>>("expenses");
  * items and a stock movement per product atomically, and there is no update
  * or delete. Only the operations the backend actually offers are exposed.
  */
+/**
+ * A sale as the API returns it. Snake_case because that is the wire format,
+ * and loose about the rest — a sale carries EBM and cash-drawer fields the
+ * till reads but does not compute.
+ */
+export type SaleRecord = {
+  id: string;
+  invoice_no: string;
+  receipt_no: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_tin: string | null;
+  items: number;
+  subtotal: string | number;
+  tax: string | number;
+  discount: string | number;
+  total: string | number;
+  paid: string | number;
+  due: string | number;
+  change_given: string | number;
+  cost_total: string | number;
+  gross_profit: string | number;
+  payment_method: string | null;
+  momo_number: string | null;
+  momo_code: string | null;
+  status: string | null;
+  branch: string | null;
+  cashier: string | null;
+  sale_items: Record<string, unknown>[];
+} & Record<string, unknown>;
+
 export const salesApi = {
   async list(): Promise<{ data: Record<string, unknown>[] }> {
     return { data: (await request("/sales", { method: "GET", auth: true })) as Record<string, unknown>[] };
@@ -371,17 +414,40 @@ export const salesApi = {
   async get(id: string) {
     return request(`/sales/${id}`, { method: "GET", auth: true });
   },
-  /** Server prices every line from the catalogue and derives all totals. */
+  /**
+   * Completes a sale.
+   *
+   * Everything that decides money is derived on the server: prices and costs
+   * come from the catalogue, totals from the lines, and stock comes off inside
+   * the same transaction. Sending a total here has no effect — deliberately,
+   * since a till that can name its own numbers can sell a television for one
+   * franc. The response is the authoritative sale, including its invoice
+   * number, computed change and margin.
+   */
   async checkout(input: {
-    items: { product_id: string; quantity: number; unit_price?: number; discount?: number }[];
+    items: {
+      product_id: string;
+      quantity: number;
+      unit_price?: number;
+      unit_cost?: number;
+      discount?: number;
+      tax_rate?: number;
+      batch_id?: string | null;
+    }[];
     customer_name?: string | null;
+    customer_phone?: string | null;
+    customer_tin?: string | null;
     payment_method?: string;
+    momo_number?: string | null;
+    momo_code?: string | null;
     paid?: number;
     discount?: number;
     branch?: string | null;
+    cashier?: string | null;
+    receipt_no?: string | null;
     notes?: string | null;
-  }) {
-    return request("/sales", { method: "POST", body: input, auth: true });
+  }): Promise<SaleRecord> {
+    return request("/sales", { method: "POST", body: input, auth: true }) as Promise<SaleRecord>;
   },
 };
 

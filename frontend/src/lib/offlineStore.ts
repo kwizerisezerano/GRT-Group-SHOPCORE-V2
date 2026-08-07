@@ -350,6 +350,21 @@ export function isOnline() {
   return true;
 }
 
+/**
+ * Whether an error looks like a failure to reach a server, rather than a
+ * server saying no.
+ *
+ * This used to call markNetworkUnreachable() itself, which made a question
+ * into a decision: anything that asked "was that a network error?" declared
+ * the whole application offline for the next fifteen seconds. During the
+ * migration off Supabase that was actively harmful — a leftover Supabase call
+ * to an unconfigured host fails on every page load, so the till decided it was
+ * offline and queued sales locally instead of sending them to a backend that
+ * was running and reachable the whole time.
+ *
+ * Reachability is now reported by whoever actually made the call, and only for
+ * the API the application depends on. See lib/apiClient.ts.
+ */
 export function isNetworkError(error: unknown) {
   const message = String(
     (error as any)?.message ||
@@ -377,8 +392,6 @@ export function isNetworkError(error: unknown) {
     message.includes("realtime") ||
     message.includes("timeout") ||
     message.includes("aborterror");
-
-  if (networkFailure) markNetworkUnreachable();
 
   return networkFailure;
 }

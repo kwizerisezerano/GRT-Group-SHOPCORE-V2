@@ -52,6 +52,7 @@ import {
   Clock3,
 } from "lucide-react";
 import { useProducts, type DbProduct } from "@/hooks/useSupabaseData";
+import { salesApi } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOfflineMode } from "@/lib/offlineAuth";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
@@ -293,9 +294,25 @@ function shouldUseOfflineStorage() {
 function shouldSaveSaleOffline(error: unknown) {
   const message = String((error as any)?.message || error || "").toLowerCase();
 
+  /*
+   * A sale the server actively refused must never be queued for later.
+   *
+   * The checks below are deliberately loose — they match on message text — so
+   * without this an "insufficient stock" 409 would be filed as an offline sale
+   * and replayed against the same stock that was not there the first time. Any
+   * answer from the server means the server was reached, so there is nothing
+   * to retry offline; only a failure to reach it at all qualifies.
+   */
+  const status = (error as any)?.status;
+  if (typeof status === "number" && status >= 400 && status !== 401) return false;
+
   return (
     shouldUseOfflineStorage() ||
     isNetworkError(error) ||
+    // The API client reports an unreachable backend as status 0.
+    status === 0 ||
+    message.includes("cannot reach the shopcore api") ||
+    message.includes("you appear to be offline") ||
     message.includes("failed to fetch") ||
     message.includes("err_name_not_resolved") ||
     message.includes("networkerror") ||
@@ -1555,92 +1572,72 @@ export default function POS() {
       }
 
       const receiptNo = `RCT-${Date.now().toString().slice(-8)}`;
-      const invoiceNo = `INV-${Date.now().toString().slice(-8)}`;
-      const change = selectedPayment === "cash" ? tendered - total : 0;
-      const saleCostTotal = costTotal;
-      const saleGrossProfit = grossProfit;
 
-      const { data: sale, error: saleError } = await (supabase as any)
-        .from("sales")
-        .insert({
-          tenant_id: tenantId,
-          user_id: user.id,
-          invoice_no: invoiceNo,
-          receipt_no: receiptNo,
-          customer_name: customerName.trim() || "Walk-in Customer",
-          customer_phone: customerPhone.trim() || null,
-          customer_tin: customerTin.trim() || null,
-          tin_number: customerTin.trim() || null,
-          items: totalItems,
-          subtotal,
-          tax: taxAmount,
-          discount: cartDiscount,
-          total,
-          cost_total: saleCostTotal,
-          cogs_total: saleCostTotal,
-          gross_profit: saleGrossProfit,
-          profit: saleGrossProfit,
-          net_profit: saleGrossProfit,
-          paid: tendered,
-          due: 0,
-          payment_method: selectedPayment,
-          status: "completed",
-          branch: BRANCH_NAME,
-          cashier: user.email || "Cashier",
-          date: new Date().toISOString(),
-          ebm_status: "not_configured",
-          ebm_invoice_no: null,
-          ebm_receipt_no: null,
-          ebm_qr_code: null,
-          ebm_verification_code: null,
-          ebm_synced_at: null,
-          notes: customerTin.trim()
-            ? `TIN: ${customerTin.trim()}`
-            : customerPhone.trim()
-              ? `Phone: ${customerPhone.trim()}`
-              : "",
-          momo_number: selectedPayment === "mobile" ? momoNumber.trim() : null,
-          momo_code: selectedPayment === "mobile" ? momoCode.trim() : null,
-        })
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      const saleItems = cart.map((item) => {
-        const unitPrice = getCartUnitPrice(item);
-        const unitCost = getCartUnitCost(item);
-        const lineSubtotal = unitPrice * item.quantity;
-        const lineDiscount = lineSubtotal * (item.discount / 100);
-        const lineTotal = lineSubtotal - lineDiscount;
-        const lineCostTotal = unitCost * item.quantity;
-        const lineGrossProfit = lineTotal - lineCostTotal;
-
-        return {
-          sale_id: sale.id,
+      /*
+       * One call, one transaction.
+       *
+       * This replaced roughly a hundred and ninety lines of separate writes:
+       * a sale row, its line items, a live re-read and update per product, a
+       * batch update and a stock movement — each its own round trip, none of
+       * them related. Any failure partway left the shop with some of a sale:
+       * stock taken off for lines that were never recorded, or a sale whose
+       * inventory never moved. Two tills selling the last unit at the same
+       * moment both read the same stock and both succeeded.
+       *
+       * The server does all of it inside one transaction with the product row
+       * locked, so a checkout either completes whole or leaves nothing behind,
+       * and the last unit can only be sold once. It also prices and costs
+       * every line from the catalogue and derives the totals itself — the
+       * numbers computed on this screen are for showing the cashier, not for
+       * deciding what gets recorded.
+       */
+      const sale = await salesApi.checkout({
+        items: cart.map((item) => ({
           product_id: item.product.id,
-          product_name: item.product.name,
           quantity: item.quantity,
-          unit_price: unitPrice,
-          unit_cost: unitCost,
-          discount: lineDiscount,
-          tax: lineTotal * (getTaxRate(item.product) / 100),
-          subtotal: lineSubtotal,
-          total: lineTotal,
-          cost_total: lineCostTotal,
-          gross_profit: lineGrossProfit,
-          tenant_id: tenantId,
-          sku: item.product.sku || null,
+          unit_price: getCartUnitPrice(item),
+          unit_cost: getCartUnitCost(item),
+          // The cart holds a percentage; the API takes an amount.
+          discount: getCartUnitPrice(item) * item.quantity * (item.discount / 100),
+          tax_rate: getTaxRate(item.product),
           batch_id: item.batchId || null,
-        };
+        })),
+        customer_name: customerName.trim() || "Walk-in Customer",
+        customer_phone: customerPhone.trim() || null,
+        customer_tin: customerTin.trim() || null,
+        payment_method: selectedPayment,
+        momo_number: selectedPayment === "mobile" ? momoNumber.trim() : null,
+        momo_code: selectedPayment === "mobile" ? momoCode.trim() : null,
+        paid: tendered,
+        discount: cartDiscount,
+        branch: BRANCH_NAME,
+        cashier: user.email || "Cashier",
+        receipt_no: receiptNo,
+        notes: customerTin.trim()
+          ? `TIN: ${customerTin.trim()}`
+          : customerPhone.trim()
+            ? `Phone: ${customerPhone.trim()}`
+            : "",
       });
 
-      const { error: itemsError } = await (supabase as any)
-        .from("sale_items")
-        .insert(saleItems);
+      // The server's numbers, not the screen's. The invoice number in
+      // particular is allocated from a per-tenant counter and is the one that
+      // belongs on the receipt.
+      const invoiceNo = sale.invoice_no;
+      const change = safeNumber(sale.change_given);
+      const saleItems = sale.sale_items || [];
 
-      if (itemsError) throw itemsError;
-
+      /*
+       * Stock is already correct in the database; this is only so the screen
+       * updates before the refetch below lands. Derived from what was sold
+       * rather than re-read, because the authoritative answer is already on
+       * its way.
+       *
+       * Batch quantities are not decremented here any more. There is no
+       * stock_batches table behind the API yet — the batch a line came from is
+       * recorded on the sale item, and depleting the batch belongs with the
+       * batches module, alongside the purchase receipts that create them.
+       */
       const soldByProduct = new Map<string, { product: DbProduct; quantity: number }>();
 
       for (const item of cart) {
@@ -1654,99 +1651,16 @@ export default function POS() {
       const updatedProductRows: any[] = [];
 
       for (const { product, quantity } of soldByProduct.values()) {
-        const { data: liveProduct, error: liveProductError } = await (supabase as any)
-          .from("products")
-          .select("id, stock, stock_quantity, min_stock, min_stock_level, status")
-          .eq("id", product.id)
-          .eq("tenant_id", tenantId)
-          .maybeSingle();
-
-        if (liveProductError) throw liveProductError;
-        if (!liveProduct || isProductArchived(liveProduct)) throw new Error(`${product.name || "Product"} is archived or inactive and cannot be sold.`);
-
-        const currentStock = safeNumber(
-          liveProduct?.stock ?? liveProduct?.stock_quantity ?? getProductStock(product)
-        );
-        const newStock = Math.max(0, currentStock - quantity);
-        const minStock = safeNumber(liveProduct?.min_stock ?? liveProduct?.min_stock_level ?? (product as any).min_stock ?? 0);
-        const nextStatus =
-          newStock <= 0
-            ? "out_of_stock"
-            : newStock <= minStock
-              ? "low_stock"
-              : "active";
-
-        const { error: stockError } = await (supabase as any)
-          .from("products")
-          .update({
-            stock: newStock,
-            stock_quantity: newStock,
-            status: nextStatus,
-          })
-          .eq("id", product.id)
-          .eq("tenant_id", tenantId);
-
-        if (stockError) throw stockError;
+        const newStock = Math.max(0, getProductStock(product) - quantity);
+        const minStock = safeNumber((product as any).min_stock ?? (product as any).min_stock_level ?? 0);
 
         updatedProductRows.push({
           ...product,
           stock: newStock,
           stock_quantity: newStock,
-          status: nextStatus,
+          status: newStock <= 0 ? "out_of_stock" : newStock <= minStock ? "low_stock" : "active",
           updated_at: new Date().toISOString(),
         });
-      }
-
-      for (const item of cart) {
-        const currentStock = getCartStockBefore(item);
-        const newStock = Math.max(0, currentStock - item.quantity);
-
-        if (item.batchId) {
-          const { data: liveBatch, error: liveBatchError } = await (supabase as any)
-            .from("stock_batches")
-            .select("id, quantity_remaining")
-            .eq("id", item.batchId)
-            .eq("tenant_id", tenantId)
-            .maybeSingle();
-
-          if (liveBatchError) throw liveBatchError;
-
-          const currentBatchRemaining = safeNumber(
-            liveBatch?.quantity_remaining ?? item.batchRemaining
-          );
-          const nextBatchRemaining = Math.max(0, currentBatchRemaining - item.quantity);
-
-          const { error: batchError } = await (supabase as any)
-            .from("stock_batches")
-            .update({
-              quantity_remaining: nextBatchRemaining,
-              status: nextBatchRemaining <= 0 ? "depleted" : "active",
-            })
-            .eq("id", item.batchId)
-            .eq("tenant_id", tenantId);
-
-          if (batchError) throw batchError;
-        }
-
-        const { error: movementError } = await (supabase as any)
-          .from("stock_movements")
-          .insert({
-            tenant_id: tenantId,
-            user_id: user.id,
-            product_id: item.product.id,
-            product_name: item.product.name,
-            movement_type: "sale",
-            quantity_change: -item.quantity,
-            stock_before: currentStock,
-            stock_after: newStock,
-            reference: invoiceNo,
-            reference_id: sale.id,
-            notes: item.batchNo
-              ? `POS sale receipt ${receiptNo} · Batch ${item.batchNo}`
-              : `POS sale receipt ${receiptNo}`,
-          });
-
-        if (movementError) throw movementError;
       }
 
       let fiscalSalePatch: any = { ebm_status: "not_configured", ebm_response: { message: "EBM not configured for this workspace" } };

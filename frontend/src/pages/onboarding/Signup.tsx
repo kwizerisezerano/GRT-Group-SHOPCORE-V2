@@ -832,7 +832,7 @@ export default function Signup() {
   const validatePhoneField = (value: string): string => {
     if (!value.trim()) return "";
     // Allow digits, spaces, hyphens for local number (without country code)
-    const phonePattern = /^[0-9\s\-]+$/;
+    const phonePattern = /^[0-9\s-]+$/;
     if (!phonePattern.test(value)) {
       return t("validation.phoneInvalidChars");
     }
@@ -847,7 +847,8 @@ export default function Signup() {
   const validateLocationField = (value: string): string => {
     if (!value.trim()) return "";
     // Allow letters, numbers, spaces, commas, periods, and hyphens for locations
-    const locationPattern = /^[a-zA-Z0-9\s,\.\-\u00C0-\u017F]+$/;
+    // The hyphen stays last so it reads as a literal, not a range.
+    const locationPattern = /^[a-zA-Z0-9\s,.\u00C0-\u017F-]+$/;
     if (!locationPattern.test(value)) {
       return t("validation.locationInvalidChars");
     }

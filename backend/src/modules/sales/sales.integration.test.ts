@@ -2,6 +2,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { prisma } from "../../db/prisma";
+import { phoneBlindIndex } from "../../lib/crypto";
 import { signAccessToken } from "../../lib/jwt";
 
 /**
@@ -143,6 +144,197 @@ describe("checkout", () => {
 
     expect(first.body.data.invoice_no).toMatch(/^INV-\d{8}-\d{4}$/);
     expect(second.body.data.invoice_no).not.toBe(first.body.data.invoice_no);
+  });
+
+  it("never issues the same invoice number twice, even under concurrency", async () => {
+    // An invoice number derived from "how many sales exist today" is only
+    // correct while requests are serial. Two concurrent checkouts both read
+    // the same count and both claim it — two different sales, one number, and
+    // an accounting record that cannot be reconciled. Stock is plentiful here
+    // so nothing else can mask a collision.
+    const product = await makeProduct("Concurrent Invoice", 500);
+
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        as(request(app).post("/api/sales")).send({
+          items: [{ product_id: product.id, quantity: 1 }],
+        })
+      )
+    );
+
+    expect(results.every((r) => r.status === 201)).toBe(true);
+
+    const numbers = results.map((r) => r.body.data.invoice_no);
+    expect(new Set(numbers).size).toBe(numbers.length);
+  });
+});
+
+describe("point of sale fields", () => {
+  it("stores the customer's phone encrypted and gives it back decrypted", async () => {
+    const product = await makeProduct("POS Phone", 10, 2500);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      customer_name: "Ange Uwase",
+      customer_phone: "+250 788 123 456",
+      customer_tin: "102938475",
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.customer_phone).toBe("+250 788 123 456");
+    expect(res.body.data.customer_tin).toBe("102938475");
+
+    // The wire must never carry the storage shape or the lookup fingerprint.
+    expect(res.body.data).not.toHaveProperty("customer_phone_encrypted");
+    expect(res.body.data).not.toHaveProperty("customer_phone_hash");
+    expect(res.body.data).not.toHaveProperty("customer_tin_encrypted");
+
+    const [row] = await prisma.$queryRawUnsafe<Record<string, string | null>[]>(
+      "SELECT customer_phone_encrypted, customer_phone_hash, customer_tin_encrypted FROM sales WHERE id = ?",
+      res.body.data.id
+    );
+
+    // Nothing readable in the column, and a hash that can be searched on.
+    expect(row.customer_phone_encrypted).toMatch(/^v1\./);
+    expect(JSON.stringify(row)).not.toContain("788");
+    expect(row.customer_phone_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("finds a sale by phone number through the blind index", async () => {
+    const product = await makeProduct("POS Lookup", 10);
+    await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      customer_phone: "+250 788 999 111",
+    });
+
+    // Spacing and punctuation must not defeat the lookup — the index is over
+    // the normalised number, not the string the cashier happened to type.
+    const found = await prisma.sale.findFirst({
+      where: { tenantId: TENANT, customerPhoneHash: phoneBlindIndex("+250-788-999-111") },
+    });
+
+    expect(found).not.toBeNull();
+
+    /*
+     * Known limitation, asserted so it cannot change unnoticed: a national
+     * number and its international form are different hashes. normalizePhone
+     * says so, because telling them apart needs a country and this function
+     * has none. It means a shop that records "0788999111" one day and
+     * "+250788999111" the next has two unlinked records for one buyer.
+     *
+     * Fixing it is an E.164 normalisation against the tenant's country, and
+     * it rewrites every phone hash already stored — customers and suppliers
+     * included — so it belongs in its own migration with a backfill, not here.
+     */
+    const national = await prisma.sale.findFirst({
+      where: { tenantId: TENANT, customerPhoneHash: phoneBlindIndex("0788999111") },
+    });
+    expect(national).toBeNull();
+  });
+
+  it("freezes cost and margin onto each line at the time of sale", async () => {
+    // costPrice is half of sellingPrice in makeProduct.
+    const product = await makeProduct("Margin Item", 10, 4000);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 3 }],
+    });
+
+    const line = res.body.data.sale_items[0];
+    expect(Number(line.unit_cost)).toBe(2000);
+    expect(Number(line.cost_total)).toBe(6000);
+    expect(Number(line.gross_profit)).toBe(6000);
+    expect(Number(res.body.data.cost_total)).toBe(6000);
+    expect(Number(res.body.data.gross_profit)).toBe(6000);
+
+    // Raising the cost price later must not rewrite a sale already made.
+    await prisma.product.update({ where: { id: product.id }, data: { costPrice: 3900 } });
+    const reread = await as(request(app).get(`/api/sales/${res.body.data.id}`));
+    expect(Number(reread.body.data.sale_items[0].unit_cost)).toBe(2000);
+  });
+
+  it("records change owed when the customer overpays", async () => {
+    const product = await makeProduct("Change Item", 10, 1500);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 2 }],
+      paid: 5000,
+    });
+
+    expect(Number(res.body.data.total)).toBe(3000);
+    expect(Number(res.body.data.change_given)).toBe(2000);
+    // Change is money handed back, not an amount still owing.
+    expect(Number(res.body.data.due)).toBe(0);
+    expect(res.body.data.status).toBe("completed");
+  });
+
+  it("encrypts the mobile-money number but keeps the transaction code readable", async () => {
+    const product = await makeProduct("MoMo Item", 10, 7000);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      payment_method: "mobile_money",
+      momo_number: "0788555222",
+      momo_code: "MP240806.1234.A56789",
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.momo_number).toBe("0788555222");
+    // The code is not personal data and must stay legible: it is what a shop
+    // reconciles against the provider's statement.
+    expect(res.body.data.momo_code).toBe("MP240806.1234.A56789");
+
+    const [row] = await prisma.$queryRawUnsafe<Record<string, string | null>[]>(
+      "SELECT momo_number_encrypted, momo_code FROM sales WHERE id = ?",
+      res.body.data.id
+    );
+    expect(row.momo_number_encrypted).toMatch(/^v1\./);
+    expect(row.momo_code).toBe("MP240806.1234.A56789");
+  });
+
+  it("keeps the cashier, branch and receipt number the till sent", async () => {
+    const product = await makeProduct("Till Item", 10);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      cashier: "Claudine",
+      branch: "Kigali Main",
+      receipt_no: "RCP-000042",
+    });
+
+    expect(res.body.data.cashier).toBe("Claudine");
+    expect(res.body.data.branch).toBe("Kigali Main");
+    expect(res.body.data.receipt_no).toBe("RCP-000042");
+  });
+
+  it("accepts the POS payment methods", async () => {
+    const product = await makeProduct("Tender Item", 50);
+
+    for (const method of ["cash", "mobile", "mobile_money", "card", "bank_transfer", "split"]) {
+      const res = await as(request(app).post("/api/sales")).send({
+        items: [{ product_id: product.id, quantity: 1 }],
+        payment_method: method,
+      });
+      expect(res.status, `payment_method=${method}`).toBe(201);
+      expect(res.body.data.payment_method).toBe(method);
+    }
+  });
+
+  it("ignores a client-supplied cost, taking it from the catalogue", async () => {
+    // Same reasoning as price: a client that can name its own cost can invent
+    // any margin it likes. unitCost is an override for a known landed cost,
+    // and it is still bounded by validation — but a missing one must never
+    // fall back to whatever the caller wished for.
+    const product = await makeProduct("Cost Probe", 10, 1000);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      cost_total: 1,
+      gross_profit: 999_999,
+    });
+
+    expect(Number(res.body.data.cost_total)).toBe(500);
+    expect(Number(res.body.data.gross_profit)).toBe(500);
   });
 });
 

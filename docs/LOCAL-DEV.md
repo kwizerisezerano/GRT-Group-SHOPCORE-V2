@@ -339,3 +339,38 @@ re-migrates and re-seeds in one step:
 cd backend
 npx prisma migrate reset --force
 ```
+
+---
+
+## 13. The till says "Offline" but everything is running
+
+The POS screen shows a **Mode** tile reading Online or Offline, and it decides
+where a completed sale goes: to the API, or into a local queue to be synced
+later. A sale in that queue is not in the database, so this is worth knowing
+how to read.
+
+Two things put it in Offline:
+
+| Signal | Where it lives | Set by |
+|---|---|---|
+| `shopcore_offline_mode` | localStorage | An explicit choice. Cleared on every login. |
+| `shopcore_network_state` | localStorage | The API client, on a request that could not reach the backend. Self-clears after 15s. |
+
+Check both in the browser console:
+
+```js
+localStorage.getItem("shopcore_offline_mode")   // null when online
+localStorage.getItem("shopcore_network_state")  // {"reachable":true,...}
+```
+
+Only `lib/apiClient.ts` may set the second one, and only when `fetch` itself
+rejects — a 4xx or 5xx means the backend answered, so the app stays online.
+
+This used to be inferred much more loosely: `isNetworkError()` in
+`lib/offlineStore.ts` marked the whole app unreachable whenever it was *asked*
+whether an error was a network error. While the migration off Supabase is
+still in progress that was actively wrong — a leftover call to the
+unconfigured `placeholder.invalid` host fails on every load of the till, so
+the POS believed it was offline and queued every sale locally while the
+backend was up and answering. Fixed, with a regression test in
+`frontend/src/lib/offlineStore.test.ts`.
