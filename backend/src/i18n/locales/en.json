@@ -138,5 +138,24 @@
     "unknownProduct": "One or more products in this sale could not be found.",
     "insufficientStock": "Not enough stock for {{product}} — {{available}} available, {{requested}} requested.",
     "alreadyRecorded": "This sale was already recorded. Returning the original receipt."
+  },
+  "purchases": {
+    "listed": "Purchases loaded successfully.",
+    "fetched": "Purchase loaded successfully.",
+    "created": "Goods receipt recorded successfully.",
+    "notFound": "That purchase could not be found.",
+    "unknownProduct": "One or more products in this purchase could not be found.",
+    "unknownSupplier": "That supplier could not be found.",
+    "alreadyRecorded": "This purchase was already recorded. Returning the original receipt."
+  },
+  "inventory": {
+    "unitListed": "Units loaded successfully.",
+    "unitFetched": "Unit loaded successfully.",
+    "unitCreated": "Unit created successfully.",
+    "unitUpdated": "Unit updated successfully.",
+    "unitDeleted": "Unit deleted successfully.",
+    "unitNotFound": "That unit could not be found.",
+    "unitDuplicate": "A unit with this name already exists.",
+    "movementListed": "Stock movements loaded successfully."
   }
 }

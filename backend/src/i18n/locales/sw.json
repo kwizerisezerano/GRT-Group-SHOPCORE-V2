@@ -138,5 +138,24 @@
     "unknownProduct": "Bidhaa moja au zaidi katika mauzo haya hazikupatikana.",
     "insufficientStock": "Hakuna hisa ya kutosha ya {{product}} — {{available}} zinapatikana, {{requested}} zimeombwa.",
     "alreadyRecorded": "Mauzo haya tayari yamesajiliwa. Tunarejesha risiti asili."
+  },
+  "purchases": {
+    "listed": "Manunuzi yamepakiwa kwa mafanikio.",
+    "fetched": "Ununuzi umepakiwa kwa mafanikio.",
+    "created": "Upokeaji wa bidhaa umesajiliwa kwa mafanikio.",
+    "notFound": "Ununuzi huo haukupatikana.",
+    "unknownProduct": "Bidhaa moja au zaidi katika ununuzi huu hazikupatikana.",
+    "unknownSupplier": "Msambazaji huyo hakupatikana.",
+    "alreadyRecorded": "Ununuzi huu tayari umesajiliwa. Tunarejesha risiti asili."
+  },
+  "inventory": {
+    "unitListed": "Vipimo vimepakiwa kwa mafanikio.",
+    "unitFetched": "Kipimo kimepakiwa kwa mafanikio.",
+    "unitCreated": "Kipimo kimeundwa kwa mafanikio.",
+    "unitUpdated": "Kipimo kimesasishwa kwa mafanikio.",
+    "unitDeleted": "Kipimo kimefutwa kwa mafanikio.",
+    "unitNotFound": "Kipimo hicho hakikupatikana.",
+    "unitDuplicate": "Kipimo chenye jina hili tayari kipo.",
+    "movementListed": "Mienendo ya hisa imepakiwa kwa mafanikio."
   }
 }

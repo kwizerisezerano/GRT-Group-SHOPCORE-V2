@@ -7,8 +7,10 @@ import {
   customersApi,
   expensesApi,
   productsApi,
+  purchasesApi,
   salesApi,
   suppliersApi,
+  unitsApi,
 } from "@/lib/apiClient";
 import { isOfflineMode } from "@/lib/offlineAuth";
 import {
@@ -738,6 +740,7 @@ const API_BACKED_TABLES: Record<string, ReturnType<typeof createCrudApi<Record<s
   customers: customersApi,
   suppliers: suppliersApi,
   expenses: expensesApi,
+  units: unitsApi,
 };
 
 /**
@@ -1185,20 +1188,88 @@ async function syncExpenses(result: SyncResult) {
   }
 }
 
+/**
+ * Replays goods receipts taken while the till was disconnected.
+ *
+ * A purchase is a transaction, not a record — a header, its lines and a stock
+ * movement per product — so it replays through its own endpoint rather than
+ * the generic CRUD path, exactly as sales do. Idempotent on the same key,
+ * because a delivery counted twice inflates stock as surely as a sale counted
+ * twice deflates it.
+ */
 async function syncPurchases(result: SyncResult) {
   const items = await getPendingPurchases();
+
   for (const item of items) {
+    const label = item.purchase_no || item.supplier_name || item.id;
+
     try {
-      await syncRecord("purchases", item, clearPendingPurchase);
+      const lines = getPurchaseLines(item);
+
+      if (lines.length === 0) {
+        await quarantinePending(
+          "purchases",
+          item,
+          result,
+          `Purchase "${label}"`,
+          "the queued receipt has no line items",
+        );
+        continue;
+      }
+
+      const unresolved = lines.filter((line: any) => !resolveLineProductId(line));
+      if (unresolved.length > 0) {
+        await quarantinePending(
+          "purchases",
+          item,
+          result,
+          `Purchase "${label}"`,
+          `${unresolved.length} line(s) reference a product that has not synced yet`,
+        );
+        continue;
+      }
+
+      await purchasesApi.create({
+        items: lines.map((line: any) => ({
+          product_id: resolveLineProductId(line)!,
+          quantity: getLineQuantity(line),
+          unit_cost: asNumber(line.unit_cost ?? line.cost_price ?? line.price),
+        })),
+        supplier_id: isOfflineId(item.supplier_id) ? null : item.supplier_id || null,
+        supplier_name: item.supplier_name || null,
+        purchase_no: item.purchase_no || null,
+        discount: asNumber(item.discount),
+        tax: asNumber(item.tax),
+        status: item.status || "completed",
+        payment_status: item.payment_status || "paid",
+        notes: item.notes || null,
+        client_request_id: item.client_request_id || item.offline_id || item.id,
+        offline: true,
+        completed_at: item.completed_at || item.purchase_date || item.date || undefined,
+      });
+
+      await clearPendingAndCached("purchases", item, clearPendingPurchase);
       result.synced += 1;
     } catch (error: any) {
-      if (isNetworkError(error)) throw error;
-      result.failed += 1;
-      result.errors.push(
-        `Purchase "${item.purchase_no || item.supplier_name || item.id}": ${error?.message || "sync failed"}`,
+      // Could not reach the server: nothing is wrong with the receipt, so it
+      // stays queued and the run stops. See syncSales for the reasoning.
+      if (isNetworkError(error) || error?.status === 0) throw error;
+
+      await quarantinePending(
+        "purchases",
+        item,
+        result,
+        `Purchase "${label}"`,
+        error?.message || "the server refused it",
       );
     }
   }
+}
+
+function getPurchaseLines(record: any) {
+  const lines =
+    record?.line_items || record?.purchase_items || record?.items_data || record?.items || [];
+  return Array.isArray(lines) ? lines : [];
 }
 
 async function findExistingSale(item: any) {
@@ -1806,15 +1877,31 @@ async function syncSales(result: SyncResult) {
  */
 async function quarantineSale(item: any, result: SyncResult, reason: string) {
   const label = item.receipt_no || item.invoice_no || item.id;
+  await quarantinePending("sales", item, result, `Sale "${label}"`, reason);
+}
 
-  await markPendingRecordFailed(
-    "sales",
-    item.offline_id || item.id,
-    reason,
-  ).catch(() => undefined);
+/**
+ * Sets a queued record of any kind aside with a reason.
+ *
+ * The shared half of the rule every module follows: a record the server
+ * actively refused will be refused identically on every retry, so leaving it
+ * in the queue is a hot loop that never drains and quietly hides the record.
+ * Setting it aside with the server's own explanation keeps it recoverable and
+ * visible — `getQuarantinedOfflineRecords()` reads them.
+ */
+async function quarantinePending(
+  table: string,
+  item: any,
+  result: SyncResult,
+  label: string,
+  reason: string,
+) {
+  await markPendingRecordFailed(table, item.offline_id || item.id, reason).catch(
+    () => undefined,
+  );
 
   result.failed += 1;
-  result.errors.push(`Sale "${label}": ${reason}`);
+  result.errors.push(`${label}: ${reason}`);
 }
 
 /**

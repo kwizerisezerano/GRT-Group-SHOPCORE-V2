@@ -138,5 +138,24 @@
     "unknownProduct": "Igicuruzwa kimwe cyangwa byinshi muri iri gurisha ntibyabonetse.",
     "insufficientStock": "Nta bicuruzwa bihagije bya {{product}} — hari {{available}}, wasabye {{requested}}.",
     "alreadyRecorded": "Iri gurisha ryari ryanditswe. Turasubiza inyemezabuguzi y'umwimerere."
+  },
+  "purchases": {
+    "listed": "Ibiguzwe byatunganijwe neza.",
+    "fetched": "Icyaguzwe cyatunganijwe neza.",
+    "created": "Kwakira ibicuruzwa byanditswe neza.",
+    "notFound": "Icyo cyaguzwe nticyabonetse.",
+    "unknownProduct": "Ibicuruzwa bimwe muri iki cyaguzwe ntibyabonetse.",
+    "unknownSupplier": "Uwo mucuruzi ntiyabonetse.",
+    "alreadyRecorded": "Iki cyaguzwe cyari cyanditswe. Turasubiza inyemezabuguzi y'umwimerere."
+  },
+  "inventory": {
+    "unitListed": "Ibipimo byatunganijwe neza.",
+    "unitFetched": "Igipimo cyatunganijwe neza.",
+    "unitCreated": "Igipimo cyaremwe neza.",
+    "unitUpdated": "Igipimo cyavuguruwe neza.",
+    "unitDeleted": "Igipimo cyasibwe neza.",
+    "unitNotFound": "Icyo gipimo nticyabonetse.",
+    "unitDuplicate": "Igipimo gifite iri zina kirahari.",
+    "movementListed": "Ingendo z'ububiko zatunganijwe neza."
   }
 }

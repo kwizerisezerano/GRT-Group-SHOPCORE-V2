@@ -16,6 +16,8 @@ import { catalogRouter } from "./modules/catalog/catalog.routes";
 import { crmRouter } from "./modules/crm/crm.routes";
 import { profileRouter } from "./modules/profile/profile.routes";
 import { salesRouter } from "./modules/sales/sales.routes";
+import { purchasesRouter } from "./modules/purchases/purchases.routes";
+import { stockMovementsRouter, unitsRouter } from "./modules/inventory/inventory.routes";
 import { workspaceRouter } from "./modules/workspace/workspace.routes";
 
 export function createApp() {
@@ -59,6 +61,9 @@ export function createApp() {
   app.use("/api", crmRouter);
   app.use("/api/profile", profileRouter);
   app.use("/api/sales", salesRouter);
+  app.use("/api/purchases", purchasesRouter);
+  app.use("/api/units", unitsRouter);
+  app.use("/api/stock-movements", stockMovementsRouter);
   app.use("/api/workspace", workspaceRouter);
 
   app.use(notFoundHandler);

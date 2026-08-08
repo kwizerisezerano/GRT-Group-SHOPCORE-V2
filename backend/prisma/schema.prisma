@@ -33,7 +33,7 @@ datasource db {
 // =========================================================================
 
 model User {
-  id String @id @default(uuid()) @db.Char(36)
+  id                   String    @id @default(uuid()) @db.Char(36)
   // PII is never stored in the clear. `*Encrypted` columns hold AES-256-GCM
   // envelopes (lib/crypto.ts); `*Hash` columns hold the keyed HMAC-SHA256
   // blind index that makes the value searchable and uniquely constrainable
@@ -49,17 +49,17 @@ model User {
   // captured at signup time, before a tenant exists. Not the source of truth
   // once a tenant/profile is created — mirrors Supabase's raw_user_meta_data
   // role for continuity only.
-  metadata        Json?
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  metadata             Json?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  profile             Profile?
+  profile              Profile?
   refreshTokens        RefreshToken[]
   passwordResetTokens  PasswordResetToken[]
   tenantMemberships    TenantMember[]
-  ownedTenants          Tenant[]        @relation("TenantOwner")
-  userRoles             UserRole[]
-  workspaceMemberships  WorkspaceMember[]
+  ownedTenants         Tenant[]             @relation("TenantOwner")
+  userRoles            UserRole[]
+  workspaceMemberships WorkspaceMember[]
 
   @@map("users")
 }
@@ -93,28 +93,28 @@ model PasswordResetToken {
 }
 
 model Profile {
-  id          String   @id @db.Char(36) // shares PK with User (1:1) — matches Supabase's profiles.id = auth.users.id
-  tenantId    String?  @map("tenant_id") @db.Char(36) // nullable: not set until a workspace/tenant exists
+  id                   String   @id @db.Char(36) // shares PK with User (1:1) — matches Supabase's profiles.id = auth.users.id
+  tenantId             String?  @map("tenant_id") @db.Char(36) // nullable: not set until a workspace/tenant exists
   // Encrypted server-side on write (lib/crypto.ts). phoneHash is unique so
   // the same number cannot be registered against two profiles; MySQL permits
   // repeated NULLs, so profiles without a phone are unaffected.
-  displayNameEncrypted String? @map("display_name_encrypted") @db.VarChar(512)
-  phoneEncrypted       String? @map("phone_encrypted") @db.VarChar(512)
-  phoneHash            String? @unique @map("phone_hash") @db.Char(64)
-  language    String   @default("en") @db.VarChar(8) // see src/i18n SUPPORTED_LANGUAGES: en | fr | es | sw | rw
-  planId      String?  @map("plan_id") @db.Char(36)
-  avatarUrl   String?  @map("avatar_url") @db.VarChar(512)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  displayNameEncrypted String?  @map("display_name_encrypted") @db.VarChar(512)
+  phoneEncrypted       String?  @map("phone_encrypted") @db.VarChar(512)
+  phoneHash            String?  @unique @map("phone_hash") @db.Char(64)
+  language             String   @default("en") @db.VarChar(8) // see src/i18n SUPPORTED_LANGUAGES: en | fr | es | sw | rw
+  planId               String?  @map("plan_id") @db.Char(36)
+  avatarUrl            String?  @map("avatar_url") @db.VarChar(512)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   user   User    @relation(fields: [id], references: [id], onDelete: Cascade)
   tenant Tenant? @relation(fields: [tenantId], references: [id])
 
   qaAuditLogs      QaAuditLog[]
-  qaFilterPresets  QaFilterPreset[]     @relation("QaFilterPresetCreatedBy")
-  qaIsolationLeaks QaIsolationLeak[]    @relation("QaIsolationLeakDetectedBy")
-  qaRuns           QaRun[]              @relation("QaRunCreatedBy")
-  qaScreenshots    QaScreenshot[]       @relation("QaScreenshotCreatedBy")
+  qaFilterPresets  QaFilterPreset[]  @relation("QaFilterPresetCreatedBy")
+  qaIsolationLeaks QaIsolationLeak[] @relation("QaIsolationLeakDetectedBy")
+  qaRuns           QaRun[]           @relation("QaRunCreatedBy")
+  qaScreenshots    QaScreenshot[]    @relation("QaScreenshotCreatedBy")
   staff            Staff[]
 
   @@index([tenantId])
@@ -122,35 +122,35 @@ model Profile {
 }
 
 model Tenant {
-  id                  String    @id @default(uuid()) @db.Char(36)
-  name                String    @db.VarChar(191)
-  ownerId             String?   @map("owner_id") @db.Char(36)
+  id                    String    @id @default(uuid()) @db.Char(36)
+  name                  String    @db.VarChar(191)
+  ownerId               String?   @map("owner_id") @db.Char(36)
   // Not unique: several tenants may legitimately share a billing contact.
   // Indexed so support tooling can still find a tenant by contact address.
-  contactEmailEncrypted String? @map("contact_email_encrypted") @db.VarChar(512)
-  contactEmailHash      String? @map("contact_email_hash") @db.Char(64)
-  slug                String?   @db.VarChar(191)
-  logoUrl             String?   @map("logo_url") @db.VarChar(512)
-  brandColor          String?   @default("#2563eb") @map("brand_color") @db.VarChar(16)
+  contactEmailEncrypted String?   @map("contact_email_encrypted") @db.VarChar(512)
+  contactEmailHash      String?   @map("contact_email_hash") @db.Char(64)
+  slug                  String?   @db.VarChar(191)
+  logoUrl               String?   @map("logo_url") @db.VarChar(512)
+  brandColor            String?   @default("#2563eb") @map("brand_color") @db.VarChar(16)
   // V2's live `tenants` table doesn't actually have these columns even
   // though AuthContext/offlineAuth/Login all query them via tenants!inner(...)
   // - a real pre-existing schema-drift bug on that branch. Fixed here rather
   // than reproduced, since MySQL is a clean start.
-  subscriptionPlan    String?   @map("subscription_plan") @db.VarChar(64)
-  subscriptionStatus  String?   @map("subscription_status") @db.VarChar(32)
-  paymentStatus       String?   @map("payment_status") @db.VarChar(32)
-  trialStatus         String?   @map("trial_status") @db.VarChar(32)
-  trialEndsAt         DateTime? @map("trial_ends_at")
-  onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
-  workspaceStatus     String?   @map("workspace_status") @db.VarChar(32)
-  billingCycle        String?   @map("billing_cycle") @db.VarChar(16)
-  createdAt           DateTime  @default(now()) @map("created_at")
+  subscriptionPlan      String?   @map("subscription_plan") @db.VarChar(64)
+  subscriptionStatus    String?   @map("subscription_status") @db.VarChar(32)
+  paymentStatus         String?   @map("payment_status") @db.VarChar(32)
+  trialStatus           String?   @map("trial_status") @db.VarChar(32)
+  trialEndsAt           DateTime? @map("trial_ends_at")
+  onboardingCompleted   Boolean   @default(false) @map("onboarding_completed")
+  workspaceStatus       String?   @map("workspace_status") @db.VarChar(32)
+  billingCycle          String?   @map("billing_cycle") @db.VarChar(16)
+  createdAt             DateTime  @default(now()) @map("created_at")
 
-  owner   User?          @relation("TenantOwner", fields: [ownerId], references: [id])
-  members TenantMember[]
-  profiles Profile[]
-  userRoles UserRole[]
-  subscriptions TenantSubscription[]
+  owner              User?                             @relation("TenantOwner", fields: [ownerId], references: [id])
+  members            TenantMember[]
+  profiles           Profile[]
+  userRoles          UserRole[]
+  subscriptions      TenantSubscription[]
   moduleEntitlements PlatformTenantModuleEntitlement[]
 
   brands           Brand[]
@@ -160,6 +160,7 @@ model Tenant {
   expenses         Expense[]
   expiredProducts  ExpiredProduct[]
   invoiceCounters  InvoiceCounter[]
+  units            Unit[]
   products         Product[]
   purchases        Purchase[]
   qaAuditLogs      QaAuditLog[]
@@ -318,33 +319,33 @@ model PaymentMethod {
 }
 
 model TenantSubscription {
-  id                     String    @id @default(uuid()) @db.Char(36)
-  tenantId               String    @map("tenant_id") @db.Char(36)
-  userId                 String?   @map("user_id") @db.Char(36)
-  planCode               String    @map("plan_code") @db.VarChar(32)
-  billingCycle           String    @map("billing_cycle") @db.VarChar(16)
-  billingMonths          Int?      @map("billing_months")
-  subscriptionAmount     Decimal?  @map("subscription_amount") @db.Decimal(14, 2)
-  subscriptionCurrency   String?   @default("RWF") @map("subscription_currency") @db.VarChar(8)
-  subscriptionDiscountPercent Decimal? @map("subscription_discount_percent") @db.Decimal(5, 2)
-  paymentMethodCode      String?   @map("payment_method_code") @db.VarChar(32)
-  subscriptionStatus     String    @default("active") @map("subscription_status") @db.VarChar(32)
-  paymentStatus          String    @default("paid") @map("payment_status") @db.VarChar(32)
+  id                          String    @id @default(uuid()) @db.Char(36)
+  tenantId                    String    @map("tenant_id") @db.Char(36)
+  userId                      String?   @map("user_id") @db.Char(36)
+  planCode                    String    @map("plan_code") @db.VarChar(32)
+  billingCycle                String    @map("billing_cycle") @db.VarChar(16)
+  billingMonths               Int?      @map("billing_months")
+  subscriptionAmount          Decimal?  @map("subscription_amount") @db.Decimal(14, 2)
+  subscriptionCurrency        String?   @default("RWF") @map("subscription_currency") @db.VarChar(8)
+  subscriptionDiscountPercent Decimal?  @map("subscription_discount_percent") @db.Decimal(5, 2)
+  paymentMethodCode           String?   @map("payment_method_code") @db.VarChar(32)
+  subscriptionStatus          String    @default("active") @map("subscription_status") @db.VarChar(32)
+  paymentStatus               String    @default("paid") @map("payment_status") @db.VarChar(32)
   // Approval-workflow columns, carried in the schema now but not yet
   // enforced by any service code - see the section comment above.
-  approvalStatus         String    @default("approved") @map("approval_status") @db.VarChar(16)
-  requestedBy            String?   @map("requested_by") @db.Char(36)
-  requestedAt            DateTime? @map("requested_at")
-  approvedBy             String?   @map("approved_by") @db.Char(36)
-  approvedAt             DateTime? @map("approved_at")
-  rejectionReason        String?   @map("rejection_reason") @db.Text
-  activatedAt            DateTime? @map("activated_at")
-  expiresAt              DateTime? @map("expires_at")
-  currentPeriodStart     DateTime? @map("current_period_start")
-  currentPeriodEnd       DateTime? @map("current_period_end")
-  trialEndsAt            DateTime? @map("trial_ends_at")
-  gracePeriodEndsAt      DateTime? @map("grace_period_ends_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
+  approvalStatus              String    @default("approved") @map("approval_status") @db.VarChar(16)
+  requestedBy                 String?   @map("requested_by") @db.Char(36)
+  requestedAt                 DateTime? @map("requested_at")
+  approvedBy                  String?   @map("approved_by") @db.Char(36)
+  approvedAt                  DateTime? @map("approved_at")
+  rejectionReason             String?   @map("rejection_reason") @db.Text
+  activatedAt                 DateTime? @map("activated_at")
+  expiresAt                   DateTime? @map("expires_at")
+  currentPeriodStart          DateTime? @map("current_period_start")
+  currentPeriodEnd            DateTime? @map("current_period_end")
+  trialEndsAt                 DateTime? @map("trial_ends_at")
+  gracePeriodEndsAt           DateTime? @map("grace_period_ends_at")
+  createdAt                   DateTime  @default(now()) @map("created_at")
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   paymentMethod PaymentMethod? @relation(fields: [paymentMethodCode], references: [code])
@@ -391,6 +392,27 @@ model Brand {
   @@map("brands")
 }
 
+/// Units of measure — "piece", "kg", "carton".
+///
+/// Products carry their unit as a plain string (`Product.unit`), which is
+/// deliberate: a product's unit is a label on that product, and pointing it at
+/// a row that can be renamed or deleted underneath it buys nothing. This table
+/// is the tenant's own list to choose from, not a foreign key.
+model Unit {
+  id           String   @id @default(uuid()) @db.Char(36)
+  tenantId     String   @map("tenant_id") @db.Char(36)
+  name         String   @db.VarChar(191)
+  abbreviation String?  @db.VarChar(32)
+  description  String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("units")
+}
+
 model Category {
   id          String   @id @default(uuid()) @db.Char(36)
   tenantId    String   @map("tenant_id") @db.Char(36)
@@ -406,17 +428,17 @@ model Category {
 }
 
 model Supplier {
-  id        String   @id @default(uuid()) @db.Char(36)
-  tenantId  String   @map("tenant_id") @db.Char(36)
+  id               String   @id @default(uuid()) @db.Char(36)
+  tenantId         String   @map("tenant_id") @db.Char(36)
   // Same per-tenant encryption/uniqueness treatment as Customer.
-  nameEncrypted    String  @map("name_encrypted") @db.VarChar(512)
-  phoneEncrypted   String? @map("phone_encrypted") @db.VarChar(512)
-  phoneHash        String? @map("phone_hash") @db.Char(64)
-  emailEncrypted   String? @map("email_encrypted") @db.VarChar(512)
-  emailHash        String? @map("email_hash") @db.Char(64)
-  addressEncrypted String? @map("address_encrypted") @db.Text
-  userId    String?  @map("user_id") @db.Char(36)
-  createdAt DateTime @default(now()) @map("created_at")
+  nameEncrypted    String   @map("name_encrypted") @db.VarChar(512)
+  phoneEncrypted   String?  @map("phone_encrypted") @db.VarChar(512)
+  phoneHash        String?  @map("phone_hash") @db.Char(64)
+  emailEncrypted   String?  @map("email_encrypted") @db.VarChar(512)
+  emailHash        String?  @map("email_hash") @db.Char(64)
+  addressEncrypted String?  @map("address_encrypted") @db.Text
+  userId           String?  @map("user_id") @db.Char(36)
+  createdAt        DateTime @default(now()) @map("created_at")
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   purchases Purchase[]
@@ -428,37 +450,37 @@ model Supplier {
 }
 
 model Product {
-  id              String    @id @default(uuid()) @db.Char(36)
-  tenantId        String    @map("tenant_id") @db.Char(36)
-  name            String    @db.VarChar(191)
-  barcode         String?   @db.VarChar(64)
-  sku             String?   @db.VarChar(64)
+  id            String    @id @default(uuid()) @db.Char(36)
+  tenantId      String    @map("tenant_id") @db.Char(36)
+  name          String    @db.VarChar(191)
+  barcode       String?   @db.VarChar(64)
+  sku           String?   @db.VarChar(64)
   // categoryId/brandId are the source of truth. `category`/`categoryName`/
   // `brand` are denormalised copies of the related row's name, kept for
   // list-view performance and read directly by the existing UI. The product
   // service writes all of them from the id in one place, so they cannot
   // drift apart — never set them independently.
-  category        String?   @db.VarChar(191)
-  categoryId      String?   @map("category_id") @db.Char(36)
-  categoryName    String?   @map("category_name") @db.VarChar(191)
-  brand           String?   @db.VarChar(191)
-  brandId         String?   @map("brand_id") @db.Char(36)
-  supplierId      String?   @map("supplier_id") @db.Char(36)
-  costPrice       Decimal   @default(0) @map("cost_price") @db.Decimal(14, 2)
-  sellingPrice    Decimal   @default(0) @map("selling_price") @db.Decimal(14, 2)
-  stock           Int       @default(0)
-  stockQuantity   Int       @default(0) @map("stock_quantity")
-  minStock        Int       @default(0) @map("min_stock")
-  minStockLevel   Int       @default(5) @map("min_stock_level")
-  taxRate         Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 2)
-  imageUrl        String?   @map("image_url") @db.VarChar(512)
-  description     String?   @db.Text
-  unit            String?   @default("pcs") @db.VarChar(32)
-  status          String?   @default("active") @db.VarChar(32)
-  expiryDate      DateTime? @map("expiry_date") @db.Date
-  userId          String?   @map("user_id") @db.Char(36)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  category      String?   @db.VarChar(191)
+  categoryId    String?   @map("category_id") @db.Char(36)
+  categoryName  String?   @map("category_name") @db.VarChar(191)
+  brand         String?   @db.VarChar(191)
+  brandId       String?   @map("brand_id") @db.Char(36)
+  supplierId    String?   @map("supplier_id") @db.Char(36)
+  costPrice     Decimal   @default(0) @map("cost_price") @db.Decimal(14, 2)
+  sellingPrice  Decimal   @default(0) @map("selling_price") @db.Decimal(14, 2)
+  stock         Int       @default(0)
+  stockQuantity Int       @default(0) @map("stock_quantity")
+  minStock      Int       @default(0) @map("min_stock")
+  minStockLevel Int       @default(5) @map("min_stock_level")
+  taxRate       Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  imageUrl      String?   @map("image_url") @db.VarChar(512)
+  description   String?   @db.Text
+  unit          String?   @default("pcs") @db.VarChar(32)
+  status        String?   @default("active") @db.VarChar(32)
+  expiryDate    DateTime? @map("expiry_date") @db.Date
+  userId        String?   @map("user_id") @db.Char(36)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creditedItems   CreditedItem[]
@@ -477,24 +499,24 @@ model Product {
 }
 
 model Customer {
-  id           String   @id @default(uuid()) @db.Char(36)
-  tenantId     String   @map("tenant_id") @db.Char(36)
+  id               String   @id @default(uuid()) @db.Char(36)
+  tenantId         String   @map("tenant_id") @db.Char(36)
   // Encrypted at rest (lib/crypto.ts). The hashes are unique *per tenant*
   // rather than globally — the same person may be a customer of two
   // different businesses on the platform, but must not be duplicated within
   // one of them. See the @@unique declarations below.
-  nameEncrypted    String  @map("name_encrypted") @db.VarChar(512)
-  phoneEncrypted   String? @map("phone_encrypted") @db.VarChar(512)
-  phoneHash        String? @map("phone_hash") @db.Char(64)
-  emailEncrypted   String? @map("email_encrypted") @db.VarChar(512)
-  emailHash        String? @map("email_hash") @db.Char(64)
-  addressEncrypted String? @map("address_encrypted") @db.Text
-  totalSpent   Decimal  @default(0) @map("total_spent") @db.Decimal(14, 2)
-  loyaltyPoints Int     @default(0) @map("loyalty_points")
-  status       String?  @default("active") @db.VarChar(32)
-  userId       String?  @map("user_id") @db.Char(36)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  nameEncrypted    String   @map("name_encrypted") @db.VarChar(512)
+  phoneEncrypted   String?  @map("phone_encrypted") @db.VarChar(512)
+  phoneHash        String?  @map("phone_hash") @db.Char(64)
+  emailEncrypted   String?  @map("email_encrypted") @db.VarChar(512)
+  emailHash        String?  @map("email_hash") @db.Char(64)
+  addressEncrypted String?  @map("address_encrypted") @db.Text
+  totalSpent       Decimal  @default(0) @map("total_spent") @db.Decimal(14, 2)
+  loyaltyPoints    Int      @default(0) @map("loyalty_points")
+  status           String?  @default("active") @db.VarChar(32)
+  userId           String?  @map("user_id") @db.Char(36)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creditedItems CreditedItem[]
@@ -506,72 +528,70 @@ model Customer {
 }
 
 model Sale {
-  id            String   @id @default(uuid()) @db.Char(36)
-  tenantId      String   @map("tenant_id") @db.Char(36)
-  invoiceNo     String   @map("invoice_no") @db.VarChar(64)
-  saleNo        String?  @map("sale_no") @db.VarChar(64)
-  receiptNo     String?  @map("receipt_no") @db.VarChar(64)
+  id                     String    @id @default(uuid()) @db.Char(36)
+  tenantId               String    @map("tenant_id") @db.Char(36)
+  invoiceNo              String    @map("invoice_no") @db.VarChar(64)
+  saleNo                 String?   @map("sale_no") @db.VarChar(64)
+  receiptNo              String?   @map("receipt_no") @db.VarChar(64)
   /// Idempotency key, chosen by the till when the sale is first attempted and
   /// reused for every retry of that same sale. It is what makes a checkout
   /// safe to send twice: the unique index below means a replay cannot create a
   /// second sale, so a connection that drops after the server committed but
   /// before the answer arrived costs nothing.
-  clientRequestId String? @map("client_request_id") @db.VarChar(64)
+  clientRequestId        String?   @map("client_request_id") @db.VarChar(64)
   /// "online" for a sale recorded as it happened, "offline" for one taken on a
   /// disconnected till and replayed later. Worth keeping: an offline sale is
   /// allowed to drive stock negative, because the goods physically left the
   /// shop whatever the database believed at the time.
-  source        String?  @default("online") @db.VarChar(16)
+  source                 String?   @default("online") @db.VarChar(16)
   /// When the till actually completed the sale, which for an offline sale is
   /// earlier — sometimes much earlier — than when the server first saw it.
-  completedAt   DateTime? @map("completed_at")
-  customerName  String?  @map("customer_name") @db.VarChar(191)
+  completedAt            DateTime? @map("completed_at")
+  customerName           String?   @map("customer_name") @db.VarChar(191)
   // A walk-in customer's phone and tax number are personal data just as much
   // as a registered customer's, so they get the same treatment as everywhere
   // else: AES-256-GCM at rest, with a blind index on the phone so a shop can
   // still look a buyer up by number. Not unique — one person may buy twice.
-  customerPhoneEncrypted String? @map("customer_phone_encrypted") @db.VarChar(512)
-  customerPhoneHash      String? @map("customer_phone_hash") @db.Char(64)
-  customerTinEncrypted   String? @map("customer_tin_encrypted") @db.VarChar(512)
-  items         Int      @default(0)
-  subtotal      Decimal  @default(0) @db.Decimal(14, 2)
-  tax           Decimal  @default(0) @db.Decimal(14, 2)
-  discount      Decimal  @default(0) @db.Decimal(14, 2)
-  total         Decimal  @default(0) @db.Decimal(14, 2)
-  paid          Decimal  @default(0) @db.Decimal(14, 2)
-  due           Decimal  @default(0) @db.Decimal(14, 2)
-  changeGiven   Decimal  @default(0) @map("change_given") @db.Decimal(14, 2)
+  customerPhoneEncrypted String?   @map("customer_phone_encrypted") @db.VarChar(512)
+  customerPhoneHash      String?   @map("customer_phone_hash") @db.Char(64)
+  customerTinEncrypted   String?   @map("customer_tin_encrypted") @db.VarChar(512)
+  items                  Int       @default(0)
+  subtotal               Decimal   @default(0) @db.Decimal(14, 2)
+  tax                    Decimal   @default(0) @db.Decimal(14, 2)
+  discount               Decimal   @default(0) @db.Decimal(14, 2)
+  total                  Decimal   @default(0) @db.Decimal(14, 2)
+  paid                   Decimal   @default(0) @db.Decimal(14, 2)
+  due                    Decimal   @default(0) @db.Decimal(14, 2)
+  changeGiven            Decimal   @default(0) @map("change_given") @db.Decimal(14, 2)
   // Margin is stored, not recomputed on read: cost prices move, and a sale's
   // profit is a fact about the moment it happened.
-  costTotal     Decimal  @default(0) @map("cost_total") @db.Decimal(14, 2)
-  grossProfit   Decimal  @default(0) @map("gross_profit") @db.Decimal(14, 2)
-  paymentMethod String?  @map("payment_method") @db.VarChar(32)
+  costTotal              Decimal   @default(0) @map("cost_total") @db.Decimal(14, 2)
+  grossProfit            Decimal   @default(0) @map("gross_profit") @db.Decimal(14, 2)
+  paymentMethod          String?   @map("payment_method") @db.VarChar(32)
   // Mobile-money reference. The number is a phone number, so it is encrypted;
   // the transaction code is not personal data and stays readable for
   // reconciliation against the provider's statement.
-  momoNumberEncrypted String? @map("momo_number_encrypted") @db.VarChar(512)
-  momoCode            String? @map("momo_code") @db.VarChar(64)
-  status        String?  @default("completed") @db.VarChar(32)
-  branch        String?  @db.VarChar(191)
-  cashier       String?  @db.VarChar(191)
-  notes         String?  @db.Text
+  momoNumberEncrypted    String?   @map("momo_number_encrypted") @db.VarChar(512)
+  momoCode               String?   @map("momo_code") @db.VarChar(64)
+  status                 String?   @default("completed") @db.VarChar(32)
+  branch                 String?   @db.VarChar(191)
+  cashier                String?   @db.VarChar(191)
+  notes                  String?   @db.Text
   // Rwanda EBM fiscalisation. Written by the EBM submission flow after the
   // sale exists, which is why every field is nullable.
-  ebmStatus           String?   @default("not_configured") @map("ebm_status") @db.VarChar(32)
-  ebmInvoiceNo        String?   @map("ebm_invoice_no") @db.VarChar(64)
-  ebmReceiptNo        String?   @map("ebm_receipt_no") @db.VarChar(64)
-  ebmQrCode           String?   @map("ebm_qr_code") @db.Text
-  ebmVerificationCode String?   @map("ebm_verification_code") @db.VarChar(191)
-  ebmSyncedAt         DateTime? @map("ebm_synced_at")
-  userId        String?  @map("user_id") @db.Char(36)
-  date          DateTime @default(now())
-  createdAt     DateTime @default(now()) @map("created_at")
+  ebmStatus              String?   @default("not_configured") @map("ebm_status") @db.VarChar(32)
+  ebmInvoiceNo           String?   @map("ebm_invoice_no") @db.VarChar(64)
+  ebmReceiptNo           String?   @map("ebm_receipt_no") @db.VarChar(64)
+  ebmQrCode              String?   @map("ebm_qr_code") @db.Text
+  ebmVerificationCode    String?   @map("ebm_verification_code") @db.VarChar(191)
+  ebmSyncedAt            DateTime? @map("ebm_synced_at")
+  userId                 String?   @map("user_id") @db.Char(36)
+  date                   DateTime  @default(now())
+  createdAt              DateTime  @default(now()) @map("created_at")
 
   saleItems     SaleItem[]
   creditedItems CreditedItem[]
 
-  @@index([tenantId])
-  @@index([customerPhoneHash])
   // Two sales sharing an invoice number is an accounting record that cannot
   // be reconciled, so the database refuses it rather than trusting the
   // allocator to be right. Per tenant: two businesses may both have INV-0001.
@@ -579,6 +599,8 @@ model Sale {
   // The constraint that makes replay safe. Per tenant, so two businesses
   // generating the same key never collide.
   @@unique([tenantId, clientRequestId])
+  @@index([tenantId])
+  @@index([customerPhoneHash])
   @@map("sales")
 }
 
@@ -657,27 +679,34 @@ model CreditedItem {
 }
 
 model Purchase {
-  id            String   @id @default(uuid()) @db.Char(36)
-  tenantId      String   @map("tenant_id") @db.Char(36)
-  supplierId    String?  @map("supplier_id") @db.Char(36)
-  supplierName  String?  @map("supplier_name") @db.VarChar(191)
-  purchaseNo    String?  @map("purchase_no") @db.VarChar(64)
-  total         Decimal  @default(0) @db.Decimal(14, 2)
-  subtotal      Decimal  @default(0) @db.Decimal(14, 2)
-  tax           Decimal  @default(0) @db.Decimal(14, 2)
-  discount      Decimal  @default(0) @db.Decimal(14, 2)
-  status        String?  @default("completed") @db.VarChar(32)
-  paymentStatus String?  @default("paid") @map("payment_status") @db.VarChar(32)
-  notes         String?  @db.Text
-  userId        String?  @map("user_id") @db.Char(36)
-  purchaseDate  DateTime @default(now()) @map("purchase_date")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @db.Char(36)
+  tenantId        String    @map("tenant_id") @db.Char(36)
+  supplierId      String?   @map("supplier_id") @db.Char(36)
+  supplierName    String?   @map("supplier_name") @db.VarChar(191)
+  purchaseNo      String?   @map("purchase_no") @db.VarChar(64)
+  total           Decimal   @default(0) @db.Decimal(14, 2)
+  subtotal        Decimal   @default(0) @db.Decimal(14, 2)
+  tax             Decimal   @default(0) @db.Decimal(14, 2)
+  discount        Decimal   @default(0) @db.Decimal(14, 2)
+  status          String?   @default("completed") @db.VarChar(32)
+  paymentStatus   String?   @default("paid") @map("payment_status") @db.VarChar(32)
+  notes           String?   @db.Text
+  userId          String?   @map("user_id") @db.Char(36)
+  purchaseDate    DateTime  @default(now()) @map("purchase_date")
+  /// Idempotency key — see the Sale model. A goods receipt recorded twice
+  /// inflates stock just as surely as a sale recorded twice deflates it.
+  clientRequestId String?   @map("client_request_id") @db.VarChar(64)
+  source          String?   @default("online") @db.VarChar(16)
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier  Supplier?      @relation(fields: [supplierId], references: [id])
-  items     PurchaseItem[]
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier?      @relation(fields: [supplierId], references: [id])
+  items    PurchaseItem[]
 
+  @@unique([tenantId, purchaseNo])
+  @@unique([tenantId, clientRequestId])
   @@index([tenantId])
   @@map("purchases")
 }
@@ -692,6 +721,10 @@ model PurchaseItem {
   quantity    Int      @default(1)
   unitCost    Decimal  @default(0) @map("unit_cost") @db.Decimal(14, 2)
   subtotal    Decimal  @default(0) @db.Decimal(14, 2)
+  /// What the product's average cost became once this receipt was applied.
+  /// Stored so a margin figure can be explained later: the number a report
+  /// used is the number that was true at the time, not whatever it is now.
+  costAfter   Decimal? @map("cost_after") @db.Decimal(14, 2)
   createdAt   DateTime @default(now()) @map("created_at")
 
   purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
@@ -806,8 +839,8 @@ model QaScreenshot {
   createdBy String?  @map("created_by") @db.Char(36)
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  qaRun   QaRun   @relation(fields: [qaRunId], references: [id], onDelete: Cascade)
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  qaRun   QaRun    @relation(fields: [qaRunId], references: [id], onDelete: Cascade)
   creator Profile? @relation("QaScreenshotCreatedBy", fields: [createdBy], references: [id])
 
   @@index([tenantId])
@@ -833,18 +866,18 @@ model QaAuditLog {
 }
 
 model QaFilterPreset {
-  id        String    @id @default(uuid()) @db.Char(36)
-  tenantId  String    @map("tenant_id") @db.Char(36)
-  name      String    @db.VarChar(191)
-  filters   Json?
-  createdBy String?   @map("created_by") @db.Char(36)
-  userId    String?   @map("user_id") @db.Char(36)
-  action    String?   @db.VarChar(191)
-  filterUser String?  @map("filter_user") @db.VarChar(191)
-  fromDate  DateTime? @map("from_date")
-  toDate    DateTime? @map("to_date")
-  search    String?   @db.VarChar(255)
-  createdAt DateTime  @default(now()) @map("created_at")
+  id         String    @id @default(uuid()) @db.Char(36)
+  tenantId   String    @map("tenant_id") @db.Char(36)
+  name       String    @db.VarChar(191)
+  filters    Json?
+  createdBy  String?   @map("created_by") @db.Char(36)
+  userId     String?   @map("user_id") @db.Char(36)
+  action     String?   @db.VarChar(191)
+  filterUser String?   @map("filter_user") @db.VarChar(191)
+  fromDate   DateTime? @map("from_date")
+  toDate     DateTime? @map("to_date")
+  search     String?   @db.VarChar(255)
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator Profile? @relation("QaFilterPresetCreatedBy", fields: [createdBy], references: [id])
@@ -876,16 +909,16 @@ model QaIsolationLeak {
 }
 
 model QaSetting {
-  id                       String   @id @default(uuid()) @db.Char(36)
-  tenantId                 String   @map("tenant_id") @db.Char(36)
-  autoCapture              Boolean  @default(false) @map("auto_capture")
-  screenshotRetentionDays  Int      @default(30) @map("screenshot_retention_days")
-  isolationEnabled         Boolean  @default(true) @map("isolation_enabled")
-  webhookUrl               String?  @map("webhook_url") @db.VarChar(512)
-  webhookEnabled           Boolean  @default(false) @map("webhook_enabled")
-  captureScreenshots       Boolean  @default(true) @map("capture_screenshots")
-  diffThreshold            Decimal  @default(0.1) @map("diff_threshold") @db.Decimal(5, 2)
-  createdAt                DateTime @default(now()) @map("created_at")
+  id                      String   @id @default(uuid()) @db.Char(36)
+  tenantId                String   @map("tenant_id") @db.Char(36)
+  autoCapture             Boolean  @default(false) @map("auto_capture")
+  screenshotRetentionDays Int      @default(30) @map("screenshot_retention_days")
+  isolationEnabled        Boolean  @default(true) @map("isolation_enabled")
+  webhookUrl              String?  @map("webhook_url") @db.VarChar(512)
+  webhookEnabled          Boolean  @default(false) @map("webhook_enabled")
+  captureScreenshots      Boolean  @default(true) @map("capture_screenshots")
+  diffThreshold           Decimal  @default(0.1) @map("diff_threshold") @db.Decimal(5, 2)
+  createdAt               DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

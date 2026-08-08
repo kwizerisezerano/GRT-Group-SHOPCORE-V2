@@ -138,5 +138,24 @@
     "unknownProduct": "Un ou plusieurs produits de cette vente sont introuvables.",
     "insufficientStock": "Stock insuffisant pour {{product}} — {{available}} disponible(s), {{requested}} demandé(s).",
     "alreadyRecorded": "Cette vente a déjà été enregistrée. Le reçu d'origine est renvoyé."
+  },
+  "purchases": {
+    "listed": "Achats chargés avec succès.",
+    "fetched": "Achat chargé avec succès.",
+    "created": "Réception de marchandises enregistrée avec succès.",
+    "notFound": "Cet achat est introuvable.",
+    "unknownProduct": "Un ou plusieurs produits de cet achat sont introuvables.",
+    "unknownSupplier": "Ce fournisseur est introuvable.",
+    "alreadyRecorded": "Cet achat a déjà été enregistré. Le reçu d'origine est renvoyé."
+  },
+  "inventory": {
+    "unitListed": "Unités chargées avec succès.",
+    "unitFetched": "Unité chargée avec succès.",
+    "unitCreated": "Unité créée avec succès.",
+    "unitUpdated": "Unité mise à jour avec succès.",
+    "unitDeleted": "Unité supprimée avec succès.",
+    "unitNotFound": "Cette unité est introuvable.",
+    "unitDuplicate": "Une unité portant ce nom existe déjà.",
+    "movementListed": "Mouvements de stock chargés avec succès."
   }
 }

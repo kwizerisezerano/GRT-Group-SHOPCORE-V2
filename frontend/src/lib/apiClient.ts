@@ -387,6 +387,7 @@ export const productsApi = createCrudApi<Record<string, unknown>>("products");
 export const customersApi = createCrudApi<Record<string, unknown>>("customers");
 export const suppliersApi = createCrudApi<Record<string, unknown>>("suppliers");
 export const expensesApi = createCrudApi<Record<string, unknown>>("expenses");
+export const unitsApi = createCrudApi<Record<string, unknown>>("units");
 
 /**
  * Sales are transactional, not CRUD: a checkout writes a header, its line
@@ -477,6 +478,60 @@ export const salesApi = {
     completed_at?: string;
   }): Promise<SaleRecord> {
     return request("/sales", { method: "POST", body: input, auth: true }) as Promise<SaleRecord>;
+  },
+};
+
+/**
+ * Goods received from a supplier. Transactional like a sale and idempotent on
+ * the same key, because a delivery counted twice inflates stock exactly as
+ * surely as a sale counted twice deflates it.
+ */
+export const purchasesApi = {
+  async list(): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request("/purchases", { method: "GET", auth: true })) as Record<string, unknown>[],
+    };
+  },
+  async get(id: string) {
+    return request(`/purchases/${id}`, { method: "GET", auth: true });
+  },
+  async create(input: {
+    items: { product_id: string; quantity: number; unit_cost?: number }[];
+    supplier_id?: string | null;
+    supplier_name?: string | null;
+    purchase_no?: string | null;
+    discount?: number;
+    tax?: number;
+    status?: string;
+    payment_status?: string;
+    notes?: string | null;
+    client_request_id?: string;
+    offline?: boolean;
+    completed_at?: string;
+  }) {
+    return request("/purchases", { method: "POST", body: input, auth: true });
+  },
+};
+
+/**
+ * The stock ledger. Read-only by design: movements are written only by the
+ * code that actually moves stock, inside the transaction that moved it. A
+ * ledger anyone can post to is not a ledger.
+ */
+export const stockMovementsApi = {
+  async list(params: { product_id?: string; movement_type?: string; limit?: number } = {}) {
+    const query = new URLSearchParams();
+    if (params.product_id) query.set("product_id", params.product_id);
+    if (params.movement_type) query.set("movement_type", params.movement_type);
+    if (params.limit) query.set("limit", String(params.limit));
+
+    const suffix = query.toString() ? `?${query}` : "";
+    return {
+      data: (await request(`/stock-movements${suffix}`, {
+        method: "GET",
+        auth: true,
+      })) as Record<string, unknown>[],
+    };
   },
 };
 

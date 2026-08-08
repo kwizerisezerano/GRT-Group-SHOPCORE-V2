@@ -138,5 +138,24 @@
     "unknownProduct": "No se encontraron uno o más productos de esta venta.",
     "insufficientStock": "Stock insuficiente de {{product}}: {{available}} disponible(s), {{requested}} solicitado(s).",
     "alreadyRecorded": "Esta venta ya fue registrada. Se devuelve el recibo original."
+  },
+  "purchases": {
+    "listed": "Compras cargadas correctamente.",
+    "fetched": "Compra cargada correctamente.",
+    "created": "Recepción de mercancía registrada correctamente.",
+    "notFound": "No se encontró esa compra.",
+    "unknownProduct": "No se encontraron uno o más productos de esta compra.",
+    "unknownSupplier": "No se encontró ese proveedor.",
+    "alreadyRecorded": "Esta compra ya fue registrada. Se devuelve el recibo original."
+  },
+  "inventory": {
+    "unitListed": "Unidades cargadas correctamente.",
+    "unitFetched": "Unidad cargada correctamente.",
+    "unitCreated": "Unidad creada correctamente.",
+    "unitUpdated": "Unidad actualizada correctamente.",
+    "unitDeleted": "Unidad eliminada correctamente.",
+    "unitNotFound": "No se encontró esa unidad.",
+    "unitDuplicate": "Ya existe una unidad con este nombre.",
+    "movementListed": "Movimientos de stock cargados correctamente."
   }
 }

@@ -7,7 +7,10 @@ import {
   customersApi,
   expensesApi,
   productsApi,
+  purchasesApi,
+  stockMovementsApi,
   suppliersApi,
+  unitsApi,
 } from "@/lib/apiClient";
 import { useApiMutations, useApiTable } from "@/hooks/useApiData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -986,30 +989,7 @@ export function useSupplierMutations() {
 /* PURCHASES */
 
 export function usePurchases() {
-  const { user, tenantId, session } = useAuth();
-  return useQuery({
-    queryKey: ["purchases", tenantId, queryModeKey(session), localDataVersionKey()],
-    enabled: !!user && !!tenantId,
-    staleTime: queryIsOnline(session) ? 0 : 1000 * 60 * 5,
-    retry: 0,
-    refetchOnReconnect: queryIsOnline(session),
-    refetchOnWindowFocus: queryIsOnline(session),
-    networkMode: queryIsOnline(session) ? "online" : "always",
-    queryFn: async () => {
-      if (!hasOnlineSession(session)) return await getCachedSortedTable<DbPurchase>("purchases");
-      try {
-        const { data, error } = await (supabase as any).from("purchases").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
-        if (error) throw error;
-        const merged = await mergeOnlineTableWithPending<DbPurchase>("purchases", data || []);
-        await saveCachedTable("purchases", merged);
-        return merged;
-      } catch (error) {
-        const cached = await getCachedSortedTable<DbPurchase>("purchases");
-        if (cached.length > 0 || shouldFallbackToCache(error)) return cached;
-        throw error;
-      }
-    },
-  });
+  return useApiTable<DbPurchase>("purchases", purchasesApi as never);
 }
 
 export function usePurchaseMutations() {
@@ -1641,11 +1621,11 @@ export function useBrandMutations() {
 }
 
 export function useUnits() {
-  return useGenericTable<DbSimpleMaster>("units");
+  return useApiTable<DbSimpleMaster>("units", unitsApi as never);
 }
 
 export function useUnitMutations() {
-  return useGenericMutations<DbSimpleMaster>("units", "offline-unit", "Unit");
+  return useApiMutations<DbSimpleMaster>("units", unitsApi as never, "Unit");
 }
 
 /* OPERATIONAL MODULE HOOKS */
@@ -2054,8 +2034,17 @@ export interface DbStockMovement {
   created_at: string;
 }
 
+/**
+ * The stock ledger, read from the API.
+ *
+ * Read-only on purpose: movements are written by the code that actually moves
+ * stock, inside the transaction that moved it, so there is no mutation hook to
+ * go with this one.
+ */
 export function useStockMovements(limit = 1000) {
-  const query = useGenericTable<DbStockMovement>("stock_movements");
+  const query = useApiTable<DbStockMovement>("stock_movements", {
+    list: () => stockMovementsApi.list({ limit }),
+  } as never);
 
   return {
     ...query,

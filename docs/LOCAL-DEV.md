@@ -494,11 +494,15 @@ settle. Working today:
 - **products, categories, brands, customers, suppliers, expenses** — through
   their CRUD endpoints
 
-Everything else (purchases, stock adjustments, transfers, quotations, loyalty,
-staff, EBM settings, workspace) still syncs through Supabase, so it queues
-offline and **cannot come back yet**. Each follows its own backend module;
-`API_BACKED_TABLES` in `syncOfflineData.ts` is the list, and adding a name to
-it is what moves a module across.
+- **purchases** — through `POST /api/purchases`, idempotent on the same key
+- **units** — through its CRUD endpoints
+
+Everything else (stock adjustments, transfers, quotations, loyalty, staff, EBM
+settings, workspace, branches, warehouses, stock counts) still syncs through
+Supabase, so it queues offline and **cannot come back yet**. Each follows its
+own backend module; `API_BACKED_TABLES` in `syncOfflineData.ts` is the list for
+plain CRUD, and transactional modules (sales, purchases) get their own replay
+function beside it.
 
 ### Checking the state by hand
 
