@@ -18,7 +18,6 @@ import {
 } from "react-router-dom";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,6 +45,11 @@ import {
 } from "@/lib/syncOfflineData";
 import { isOnline } from "@/lib/offlineStore";
 import { isOfflineMode } from "@/lib/offlineAuth";
+import { authApi } from "@/lib/apiClient";
+import {
+  onConnectivityChange,
+  startConnectivityMonitor,
+} from "@/lib/connectivity";
 
 import OperatingSystemLanding from "./pages/OperatingSystemLanding";
 import NotFound from "./pages/NotFound";
@@ -183,34 +187,20 @@ const queryClient = new QueryClient({
   },
 });
 
-async function hasRealSupabaseSession() {
-  if (
-    isOfflineMode() ||
-    !isOnline()
-  ) {
-    return false;
-  }
-
-  try {
-    const { data } =
-      await supabase.auth.getSession();
-
-    if (data.session?.access_token) {
-      return true;
-    }
-
-    const refreshed =
-      await supabase.auth.refreshSession();
-
-    return Boolean(
-      refreshed.data.session?.access_token,
-    );
-  } catch {
-    return false;
-  }
+/**
+ * Whether there is a session the API will accept.
+ *
+ * This asked Supabase until the modules started moving to the ShopCore API,
+ * at which point it could only ever answer no — `refreshSession()` goes to an
+ * unconfigured host — and every automatic sync gave up here before touching a
+ * single queued record.
+ */
+async function hasRealApiSession() {
+  if (isOfflineMode() || !isOnline()) return false;
+  return authApi.hasValidSession();
 }
 
-async function canReachSupabase() {
+async function canReachApi() {
   return (
     isOnline() &&
     !isOfflineMode()
@@ -277,7 +267,7 @@ function AutoSyncOfflineData() {
     }
 
     const reachable =
-      await canReachSupabase();
+      await canReachApi();
 
     if (!reachable) {
       if (source === "manual-event") {
@@ -290,7 +280,7 @@ function AutoSyncOfflineData() {
     }
 
     const hasSession =
-      await hasRealSupabaseSession();
+      await hasRealApiSession();
 
     if (!hasSession) {
       if (
@@ -445,6 +435,51 @@ function AutoSyncOfflineData() {
         !isOfflineMode(),
     );
 
+    /*
+     * The connectivity monitor decides what "online" means, by asking the API
+     * rather than trusting the browser. This is the whole automatic switch:
+     * the monitor notices the connection has gone, the app drops to offline
+     * and queues; the monitor notices it is back, and the queue is replayed
+     * without anyone pressing anything.
+     *
+     * The browser's own online/offline events are still handled below, but
+     * only as prompts to re-check — a network interface coming up is not the
+     * same as the internet coming back, and a shop's router being reachable
+     * while its line is down is the ordinary case here, not an edge case.
+     */
+    const stopMonitor =
+      startConnectivityMonitor();
+
+    const unsubscribe =
+      onConnectivityChange(
+        (state) => {
+          onlineManager.setOnline(
+            state === "online" &&
+              !isOfflineMode(),
+          );
+
+          if (state === "offline") {
+            toast.warning(
+              t("sync.wentOffline"),
+            );
+            return;
+          }
+
+          toast.success(
+            t("sync.backOnline"),
+          );
+
+          // Let the connection settle before replaying — the first seconds
+          // after a link comes back are the least reliable.
+          warnedOfflineAuthRef.current =
+            false;
+
+          window.setTimeout(() => {
+            void runSync("online");
+          }, 2000);
+        },
+      );
+
     const handleOnline = () => {
       onlineManager.setOnline(true);
       warnedOfflineAuthRef.current =
@@ -523,6 +558,9 @@ function AutoSyncOfflineData() {
         "shopcore-offline-login",
         handleOfflineLogin,
       );
+
+      unsubscribe();
+      stopMonitor();
     };
   }, []);
 

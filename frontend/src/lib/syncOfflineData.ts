@@ -1,5 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
-import { salesApi } from "@/lib/apiClient";
+import {
+  authApi,
+  brandsApi,
+  categoriesApi,
+  createCrudApi,
+  customersApi,
+  expensesApi,
+  productsApi,
+  salesApi,
+  suppliersApi,
+} from "@/lib/apiClient";
 import { isOfflineMode } from "@/lib/offlineAuth";
 import {
   isOnline,
@@ -40,7 +50,6 @@ type ClearFn = (offlineId: string) => Promise<void>;
 const OFFLINE_SALE_ID_MAP_KEY = "shopcore_offline_sale_id_map";
 const OFFLINE_PRODUCT_ID_MAP_KEY = "shopcore_offline_product_id_map";
 
-const SUPABASE_REACHABILITY_TIMEOUT_MS = 4500;
 
 const SYNC_OPERATION_TIMEOUT_MS = 20000;
 const SYNC_STEP_TIMEOUT_MS = 45000;
@@ -222,44 +231,6 @@ async function clearPendingAndCached(
   }
 }
 
-async function canReachSupabase() {
-  try {
-    const healthCheck = (supabase as any)
-      .from("profiles")
-      .select("id")
-      .limit(1);
-
-    const response: any = await withTimeout(
-      Promise.resolve(healthCheck),
-      "Supabase reachability check timeout",
-      SUPABASE_REACHABILITY_TIMEOUT_MS,
-    );
-
-    const error = response?.error;
-
-    if (!error) return true;
-
-    const code = String(error?.code || "");
-    const message = String(error?.message || "").toLowerCase();
-
-    // These responses prove the Supabase API is reachable.
-    // They may happen because of RLS, authentication, or schema constraints,
-    // but they should not block offline queue sync from trying.
-    if (
-      code === "PGRST301" ||
-      code === "42501" ||
-      message.includes("permission denied") ||
-      message.includes("jwt") ||
-      message.includes("row-level security")
-    ) {
-      return true;
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
-}
 
 function saleIdentityKeys(item: any) {
   return [
@@ -489,32 +460,37 @@ async function resolveOnlineSaleId(item: any) {
   return null;
 }
 
-async function requireOnlineSupabaseSession() {
+/**
+ * Refuses to start a sync run that cannot possibly succeed.
+ *
+ * This used to demand a *Supabase* session. Once the modules began moving to
+ * the ShopCore API that check could never pass — `supabase.auth.refreshSession()`
+ * goes to an unconfigured host and fails — so every automatic sync aborted
+ * here, before reaching a single record. Offline data queued and stayed
+ * queued, with the run reporting only that a login was required.
+ *
+ * The precondition that actually matters is the one asked for now: the API is
+ * reachable and this device's session works. `hasValidSession()` establishes
+ * both in one call, since it has to reach the API to find out.
+ */
+async function requireOnlineApiSession() {
   if (isOfflineMode()) {
     throw new Error(
       "Online login required before syncing. Please log out of offline mode, then log in using the normal online login tab.",
     );
   }
 
-  const reachable = await canReachSupabase();
-  if (!reachable) {
+  if (!isOnline()) {
     throw new Error(
-      "Internet is connected, but Supabase is not reachable yet. Wait a few seconds and sync again.",
+      "Still offline. Queued records will sync automatically once the connection returns.",
     );
   }
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error)
-    throw new Error(error.message || "Could not verify Supabase session.");
-  if (data.session?.access_token) return data.session;
-
-  await supabase.auth.refreshSession();
-  const refreshed = await supabase.auth.getSession();
-  if (refreshed.data.session?.access_token) return refreshed.data.session;
-
-  throw new Error(
-    "Online login required before syncing. Please log in using the normal online login tab.",
-  );
+  if (!(await authApi.hasValidSession())) {
+    throw new Error(
+      "Your session has expired. Please log in again — nothing queued will be lost.",
+    );
+  }
 }
 
 function asNumber(value: any) {
@@ -746,7 +722,117 @@ async function clearPendingSaleRecord(item: any) {
   await clearPendingAndCached("sales", item, clearPendingSale);
 }
 
+/**
+ * The tables whose queued writes replay through the ShopCore API.
+ *
+ * Everything absent from this map still goes to Supabase. That is the seam the
+ * migration moves one module at a time: a table gets a backend, its name is
+ * added here, and its offline queue starts coming back through the API with no
+ * other change. Anything still on Supabase queues offline and cannot sync yet,
+ * which is a limitation to be honest about rather than to hide.
+ */
+const API_BACKED_TABLES: Record<string, ReturnType<typeof createCrudApi<Record<string, unknown>>>> = {
+  categories: categoriesApi,
+  brands: brandsApi,
+  products: productsApi,
+  customers: customersApi,
+  suppliers: suppliersApi,
+  expenses: expensesApi,
+};
+
+/**
+ * Replays one queued create, update or delete through the API.
+ *
+ * The awkward case is an update or delete addressed to a record that only ever
+ * existed on this device — its id is a local placeholder, so there is nothing
+ * on the server to patch or remove. An update becomes a create, because the
+ * record still needs to exist; a delete becomes nothing at all, because a row
+ * that was created and destroyed while offline has no server-side history
+ * worth reconstructing.
+ */
+async function syncRecordViaApi(
+  table: string,
+  item: any,
+  clearFn: ClearFn,
+): Promise<string | null> {
+  const api = API_BACKED_TABLES[table];
+  const operation = String(item.operation || "create").toLowerCase();
+  const payload = sanitizeGenericPayload(item);
+
+  const clearThis = async (onlineId?: string | null) => {
+    const keys = uniqueKeys(
+      item.offline_id,
+      item.id,
+      item.offline_local_id,
+      item.client_id,
+      payload?.id,
+      onlineId,
+    );
+
+    for (const key of keys) {
+      await clearFn(key).catch(() => undefined);
+      await clearPending(table, key).catch(() => undefined);
+      await removeCachedRecord(table, key).catch(() => undefined);
+      await clearSyncedDirtyCacheRecord(table, key).catch(() => undefined);
+    }
+  };
+
+  // The server owns identity and audit columns, and the offline bookkeeping
+  // fields describe this device's queue rather than the record.
+  const body = { ...payload };
+  delete body.id;
+  delete body.tenant_id;
+  delete body.created_at;
+  delete body.updated_at;
+  delete body.sync_status;
+  delete body.operation;
+  delete body.offline_id;
+  delete body.offline_local_id;
+  delete body.created_offline_at;
+  delete body.updated_offline_at;
+
+  if (operation === "delete") {
+    if (!payload.id || isOfflineId(payload.id)) {
+      // Created and deleted while offline. It never reached the server, so
+      // there is nothing to delete — dropping the queue entry is the whole job.
+      await clearThis();
+      return null;
+    }
+
+    try {
+      await api.remove(String(payload.id));
+    } catch (error: any) {
+      // Already gone is the outcome that was wanted. Anything else is real.
+      if (error?.status !== 404) throw error;
+    }
+
+    await clearThis(String(payload.id));
+    return String(payload.id);
+  }
+
+  if (operation === "update" && payload.id && !isOfflineId(payload.id)) {
+    const updated = await api.update(String(payload.id), body);
+    await clearThis(String(payload.id));
+    return String((updated.data as any)?.id ?? payload.id);
+  }
+
+  // Create, or an update to something the server has never seen.
+  const created = await api.create(body);
+  const onlineId = String((created.data as any)?.id ?? "");
+
+  if (table === "products") rememberProductIdMap(item, onlineId);
+
+  await clearThis(onlineId || null);
+  return onlineId || null;
+}
+
 async function syncRecord(table: string, item: any, clearFn: ClearFn) {
+  // Modules that have a backend replay through it; the rest still go to
+  // Supabase until theirs lands. See API_BACKED_TABLES.
+  if (API_BACKED_TABLES[table]) {
+    return syncRecordViaApi(table, item, clearFn);
+  }
+
   const operation = String(item.operation || "create").toLowerCase();
   const payload = sanitizeGenericPayload(item);
 
@@ -825,7 +911,10 @@ async function syncGenericPendingTable(
 ) {
   const items = await getPending(table);
 
-  if (items.length > 0 && !(await canSyncTable(table))) {
+  // The "does this table exist" probe asks Supabase, so it can only answer for
+  // tables Supabase still owns. Asking it about an API-backed table would skip
+  // a queue that is perfectly syncable.
+  if (items.length > 0 && !API_BACKED_TABLES[table] && !(await canSyncTable(table))) {
     result.errors.push(
       `${label}: skipped because Supabase table "${table}" does not exist yet.`,
     );
@@ -893,6 +982,46 @@ async function syncStockBatches(result: SyncResult) {
 
 async function syncProducts(result: SyncResult) {
   const items = await getPendingProducts();
+
+  /*
+   * Products have a backend, so their queue replays through it — the same
+   * generic path every other API-backed table uses. What follows is the
+   * Supabase implementation, kept only until the remaining tables move across.
+   *
+   * Validation still runs first: a queued product with no name cannot be
+   * created anywhere, and discarding it with a reason is better than sending
+   * the API something it will reject on every retry forever.
+   */
+  if (API_BACKED_TABLES.products) {
+    for (const item of items) {
+      const validationError = validateProductSyncRecord(item);
+
+      if (validationError) {
+        await discardInvalidPendingRecord(
+          result,
+          "products",
+          item,
+          "Product",
+          validationError,
+          clearPendingProduct,
+        );
+        continue;
+      }
+
+      try {
+        await syncRecordViaApi("products", item, clearPendingProduct);
+        result.synced += 1;
+      } catch (error: any) {
+        if (isNetworkError(error) || error?.status === 0) throw error;
+        result.failed += 1;
+        result.errors.push(
+          `Product "${getItemName(item, ["name"])}": ${error?.message || "sync failed"}`,
+        );
+      }
+    }
+
+    return;
+  }
 
   for (const item of items) {
     try {
@@ -2124,7 +2253,7 @@ export async function syncOfflineData(): Promise<SyncResult> {
   }
 
   try {
-    await requireOnlineSupabaseSession();
+    await requireOnlineApiSession();
     const syncTenantId = await getSyncTenantId();
 
     await runSyncStep(result, "Categories", () =>

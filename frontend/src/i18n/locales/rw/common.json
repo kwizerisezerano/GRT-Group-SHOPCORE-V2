@@ -149,7 +149,9 @@
     "success": "Inyandiko {{count}} yahujwe neza",
     "success_plural": "Inyandiko {{count}} zahujwe neza",
     "failedCount": "Inyandiko {{count}} ntiyashoboye guhuzwa",
-    "failedCount_plural": "Inyandiko {{count}} ntizashoboye guhuzwa"
+    "failedCount_plural": "Inyandiko {{count}} ntizashoboye guhuzwa",
+    "wentOffline": "Umurongo wacitse. Urakora nta murandasi — ibyo ukora bibitswe kuri iki gikoresho kandi bizohererezwa byikoresha.",
+    "backOnline": "Umurongo wagarutse. Turimo kohereza ibyanditswe nta murandasi..."
   },
   "validation": {
     "nameMinLength": "Izina rigomba kugira inyuguti 3 cyane",

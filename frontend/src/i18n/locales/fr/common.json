@@ -149,7 +149,9 @@
     "success": "{{count}} enregistrement en attente synchronisé avec succès",
     "success_plural": "{{count}} enregistrements en attente synchronisés avec succès",
     "failedCount": "{{count}} enregistrement en attente n’a pas pu être synchronisé",
-    "failedCount_plural": "{{count}} enregistrements en attente n’ont pas pu être synchronisés"
+    "failedCount_plural": "{{count}} enregistrements en attente n’ont pas pu être synchronisés",
+    "wentOffline": "Connexion perdue. Mode hors ligne — votre travail est enregistré sur cet appareil et sera synchronisé automatiquement.",
+    "backOnline": "Connexion rétablie. Synchronisation des données enregistrées hors ligne..."
   },
   "validation": {
     "nameMinLength": "Le nom doit comporter au moins 3 caractères",

@@ -149,7 +149,9 @@
     "success": "{{count}} pending record synchronized successfully",
     "success_plural": "{{count}} pending records synchronized successfully",
     "failedCount": "{{count}} pending record could not be synchronized",
-    "failedCount_plural": "{{count}} pending records could not be synchronized"
+    "failedCount_plural": "{{count}} pending records could not be synchronized",
+    "wentOffline": "Connection lost. Working offline — your work is saved on this device and will sync automatically.",
+    "backOnline": "Connection restored. Synchronizing what was recorded offline..."
   },
   "validation": {
     "nameMinLength": "Name must be at least 3 characters",

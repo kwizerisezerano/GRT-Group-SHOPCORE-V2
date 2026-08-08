@@ -1,5 +1,6 @@
 import { LANGUAGE_STORAGE_KEY } from "@/i18n/storage";
-import { markNetworkReachable, markNetworkUnreachable } from "@/lib/offlineStore";
+import { apiBaseUrl } from "@/lib/apiBase";
+import { reportApiReachable, reportApiUnreachable } from "@/lib/connectivity";
 
 const TOKENS_KEY = "shopcore_auth_tokens";
 
@@ -94,11 +95,6 @@ export class ApiError extends Error {
   }
 }
 
-function apiBaseUrl(): string {
-  const configured = import.meta.env.VITE_API_URL as string | undefined;
-  return configured ? configured.replace(/\/$/, "") : "";
-}
-
 /**
  * Language the API should answer in. Read from the same key the app's
  * LanguageContext persists to, so backend messages arrive in whatever the
@@ -145,14 +141,13 @@ async function rawRequest(path: string, options: { method: string; body?: unknow
      * The browser reports that as an opaque failed/CORS request with no
      * status, which reads as a frontend bug and sends people looking in the
      * wrong place. Say what actually happened instead.
+     *
+     * Reported to the connectivity monitor rather than acted on here. Real
+     * traffic is the best evidence there is about whether the API is up — far
+     * better than a timer — but one failed request is not proof, and it is the
+     * monitor's job to decide how many it takes.
      */
-    /*
-     * This is the only place allowed to declare the application offline.
-     * The offline engine used to infer it from any failing request anywhere,
-     * which meant one unconfigured third-party host was enough to make the
-     * till queue sales locally while the backend was up and answering.
-     */
-    markNetworkUnreachable();
+    reportApiUnreachable();
 
     throw new ApiError(
       0,
@@ -165,7 +160,7 @@ async function rawRequest(path: string, options: { method: string; body?: unknow
   }
 
   // A reply of any kind — including a 4xx — proves the API was reached.
-  markNetworkReachable();
+  reportApiReachable();
 
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
@@ -289,6 +284,28 @@ export const authApi = {
       } | null;
       isPlatformAdmin: boolean;
     }>;
+  },
+
+  /**
+   * Whether this device holds a session the API will actually accept.
+   *
+   * Not the same question as "are there tokens in localStorage": an expired or
+   * revoked token is still a token. This calls `/auth/me`, which goes through
+   * `request()` and so refreshes transparently on a 401 — so a true answer
+   * means the API was reached *and* the session works, which is exactly the
+   * precondition for replaying an offline queue.
+   *
+   * Throws nothing. Being unable to answer is itself an answer of no.
+   */
+  async hasValidSession(): Promise<boolean> {
+    if (!readStoredTokens()?.accessToken) return false;
+
+    try {
+      await request("/auth/me", { method: "GET", auth: true });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   async requestPasswordReset(email: string) {

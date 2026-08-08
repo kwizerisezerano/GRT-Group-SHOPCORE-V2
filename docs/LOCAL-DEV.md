@@ -446,3 +446,77 @@ takings and understate stock.
 send a checkout with a `client_request_id`, then send it again. The second
 answers 200 with the first sale's id, and `SELECT COUNT(*) FROM sales WHERE
 client_request_id = '…'` stays at 1.
+
+---
+
+## 15. Switching between online and offline
+
+The app is **online by default** and drops to offline only on evidence. It
+switches back and drains its queue on its own; nobody presses anything.
+
+`frontend/src/lib/connectivity.ts` owns the decision.
+
+### Why it does not just use the browser
+
+`navigator.onLine` and the `online`/`offline` events describe the *network
+interface*, not the internet. A till on a shop's wifi with the line down is
+reported online and always has been — which is the ordinary case here, not an
+edge case. So "online" is defined as **the API answered**:
+
+```
+GET /api/health   → unauthenticated, touches no database
+```
+
+Browser events are still used as hints. `offline` is conclusive and applies
+immediately; `online` only means it is worth probing again right now.
+
+### The rules
+
+| | |
+|---|---|
+| Going offline | Two consecutive failures. One dropped request happens on a healthy network, and queueing sales over it is worse than a moment's delay. |
+| Coming back | One success. A shop should be recording normally again as soon as it can, and a false positive self-corrects on the next request. |
+| Idle heartbeat | 15s online, 5s→15s (backing off) offline. |
+| Confirming a failure | ~1s — a suspected failure is settled quickly, not at the next heartbeat. |
+| Real traffic | Every API call reports its own outcome, so an active till notices **instantly**. The heartbeat only covers an idle screen. |
+| Hidden tab | Polling stops; state is re-established on return. |
+
+Measured in a browser with the API blocked at the network layer and
+`navigator.onLine` still `true`: offline within ~16s idle, back online and
+synced within ~6s of the connection returning.
+
+### What auto-syncs
+
+On the offline→online transition the queue replays automatically after a 2s
+settle. Working today:
+
+- **sales** — through `POST /api/sales`, idempotent (section 14)
+- **products, categories, brands, customers, suppliers, expenses** — through
+  their CRUD endpoints
+
+Everything else (purchases, stock adjustments, transfers, quotations, loyalty,
+staff, EBM settings, workspace) still syncs through Supabase, so it queues
+offline and **cannot come back yet**. Each follows its own backend module;
+`API_BACKED_TABLES` in `syncOfflineData.ts` is the list, and adding a name to
+it is what moves a module across.
+
+### Checking the state by hand
+
+```js
+localStorage.getItem("shopcore_network_state")   // {"reachable":true,...}
+
+// Watch it switch:
+addEventListener("shopcore-connectivity-changed", (e) => console.log(e.detail));
+```
+
+Two earlier bugs are worth knowing about, because both made the switch look
+like it worked when it did not:
+
+- The monitor used to read its own previous state back from `isOnline()`, which
+  treats a failure older than 15s as stale and reports online again by itself.
+  A connection returning after a long outage therefore found the previous state
+  already "online", emitted no transition, and never triggered the sync. The
+  monitor now holds its own state.
+- Reporting and the timer loop both scheduled the next check, so the fast
+  confirmation retry was immediately overwritten by the idle cadence and an
+  outage took a full interval to confirm.
