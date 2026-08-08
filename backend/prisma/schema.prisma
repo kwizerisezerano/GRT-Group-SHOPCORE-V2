@@ -676,13 +676,11 @@ model Sale {
   date                   DateTime  @default(now())
   createdAt              DateTime  @default(now()) @map("created_at")
 
-  /*
-   * These relations were missing entirely — the model carried only the scalar
-   * tenantId/userId, so Prisma emitted no foreign keys for `sales` even though
-   * it did for `sale_items`. A sale was therefore tied to its workspace by
-   * nothing the database enforced, and deleting a tenant left its sales behind
-   * as rows no query could reach. See migration 20260810100000.
-   */
+  // These relations were missing entirely — the model carried only the scalar
+  // tenantId/userId, so Prisma emitted no foreign keys for `sales` even though
+  // it did for `sale_items`. A sale was therefore tied to its workspace by
+  // nothing the database enforced, and deleting a tenant left its sales behind
+  // as rows no query could reach. See migration 20260810100000.
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   // SetNull, not Cascade: removing a cashier must not erase the sales they
   // recorded. The money changed hands whoever has since left.

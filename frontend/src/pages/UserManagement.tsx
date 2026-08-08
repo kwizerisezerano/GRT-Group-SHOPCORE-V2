@@ -75,6 +75,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { lastSuccessMessage, usersApi } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
@@ -386,73 +387,6 @@ function getRoleAccessModules(targetRole: Role) {
   return ["dashboard"];
 }
 
-function getDefaultPermissionForRole(targetRole: Role, module: string) {
-  const allowed = getRoleAccessModules(targetRole).includes(module);
-
-  if (!allowed) {
-    return { can_view: false, can_create: false, can_edit: false, can_delete: false, can_approve: false };
-  }
-
-  if (targetRole === "owner" || targetRole === "admin") {
-    return { can_view: true, can_create: true, can_edit: true, can_delete: true, can_approve: true };
-  }
-
-  if (targetRole === "manager") {
-    return { can_view: true, can_create: true, can_edit: true, can_delete: false, can_approve: true };
-  }
-
-  if (targetRole === "cashier") {
-    return {
-      can_view: true,
-      can_create: ["pos", "sales", "customers"].includes(module),
-      can_edit: ["customers"].includes(module),
-      can_delete: false,
-      can_approve: false,
-    };
-  }
-
-  if (targetRole === "accountant") {
-    return {
-      can_view: true,
-      can_create: ["purchases", "expenses"].includes(module),
-      can_edit: ["purchases", "expenses"].includes(module),
-      can_delete: false,
-      can_approve: ["purchases", "expenses", "reports"].includes(module),
-    };
-  }
-
-  if (targetRole === "inventory_officer") {
-    return {
-      can_view: true,
-      can_create: ["products", "inventory", "suppliers", "warehouses"].includes(module),
-      can_edit: ["products", "inventory", "suppliers", "warehouses"].includes(module),
-      can_delete: false,
-      can_approve: false,
-    };
-  }
-
-  if (targetRole === "sales_staff") {
-    return {
-      can_view: true,
-      can_create: ["pos", "sales", "customers"].includes(module),
-      can_edit: ["sales", "customers"].includes(module),
-      can_delete: false,
-      can_approve: false,
-    };
-  }
-
-  if (targetRole === "staff") {
-    return {
-      can_view: true,
-      can_create: ["pos", "sales", "customers"].includes(module),
-      can_edit: false,
-      can_delete: false,
-      can_approve: false,
-    };
-  }
-
-  return { can_view: true, can_create: false, can_edit: false, can_delete: false, can_approve: false };
-}
 
 function parseBulkEmails(raw: string, fallbackRole: Role) {
   return raw
@@ -507,68 +441,38 @@ export default function UserManagement() {
         return cached.map((member) => ({ ...member, status: member.status || "offline_cached" }));
       }
 
+      /*
+       * One call. This was five Supabase queries stitched together in the
+       * browser — memberships, then profiles, then user_roles, then branches,
+       * then payroll — which is also where the module's worst bug lived: the
+       * role came from `user_roles` while the API read `tenant_members`, so
+       * changing someone's role here changed nothing the server believed.
+       *
+       * The endpoint joins and decrypts server-side and returns the role the
+       * API actually enforces, alongside the permissions that role resolves to.
+       */
       try {
-        const { data: memberships, error: memberError } = await (supabase as any)
-          .from("tenant_members")
-          .select("user_id, branch_id, department, status, created_at")
-          .eq("tenant_id", tenantId);
+        const { data } = await usersApi.members();
 
-        if (memberError) throw memberError;
+        const members = (data as any[]).map((row) => ({
+          user_id: row.user_id,
+          email: row.email ?? "",
+          full_name: row.display_name ?? row.email ?? "",
+          display_name: row.display_name ?? null,
+          phone: row.phone ?? null,
+          avatar_url: row.avatar_url ?? null,
+          role: (row.role ?? "staff") as Role,
+          permissions: row.permissions ?? [],
+          status: "active",
+          created_at: row.joined_at ?? row.created_at ?? null,
+        })) as unknown as Member[];
 
-        const ids = (memberships ?? []).map((m: any) => m.user_id);
-        if (!ids.length) {
-          await saveCachedTable(cacheKey, []);
-          return [];
-        }
-
-        const [{ data: profiles, error: profileError }, { data: roles, error: roleError }, { data: branches }, { data: payrollRows }, { data: activityRows }] = await Promise.all([
-          (supabase as any).from("profiles").select("id, display_name, phone, avatar_url, updated_at").in("id", ids),
-          (supabase as any).from("user_roles").select("user_id, role").eq("tenant_id", tenantId).in("user_id", ids),
-          (supabase as any).from("branches").select("id, name").eq("tenant_id", tenantId),
-          (supabase as any).from("staff_payroll").select("staff_id, user_id, net_pay, status, created_at").eq("tenant_id", tenantId).limit(5000),
-          (supabase as any).from("activity_logs").select("id, user_id, user, action, module, description, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(500),
-        ]);
-
-        if (profileError) throw profileError;
-        if (roleError) throw roleError;
-
-        const branchMap = new Map<string, string>((branches ?? []).map((branch: any) => [branch.id, branch.name]));
-        const activityMap = new Map<string, string>();
-        for (const row of activityRows ?? []) {
-          if (row.user_id && !activityMap.has(row.user_id)) activityMap.set(row.user_id, row.created_at);
-        }
-
-        const rows = ids.map((id: string) => {
-          const membership = memberships?.find((m: any) => m.user_id === id);
-          const profile = profiles?.find((p: any) => p.id === id);
-          const userRole = roles?.find((r: any) => r.user_id === id);
-          const payroll = (payrollRows ?? []).find((item: any) => item.user_id === id || item.staff_id === id);
-          const branchId = membership?.branch_id || null;
-
-          return {
-            user_id: id,
-            display_name: decryptData(profile?.display_name || '') || null,
-            phone: decryptData(profile?.phone || '') || null,
-            avatar_url: profile?.avatar_url ?? null,
-            role: normalizeRole(userRole?.role),
-            status: normalizeStatus(membership?.status),
-            department: membership?.department || "Operations",
-            branch_id: branchId,
-            branch_name: branchId ? branchMap.get(branchId) || null : null,
-            last_activity_at: activityMap.get(id) || profile?.updated_at || null,
-            last_login_at: profile?.updated_at || null,
-            payroll_status: payroll?.status || null,
-            salary_preview: safeNumber(payroll?.net_pay),
-          } satisfies Member;
-        });
-
-        await saveCachedTable(cacheKey, rows);
-        await saveCachedTable("admin_members", rows);
-        return rows;
-      } catch (error: any) {
-        if (isNetworkError(error)) {
-          const cached = ((await getCachedTable(cacheKey)) as Member[]) || [];
-          return cached.map((member) => ({ ...member, status: member.status || "offline_cached" }));
+        await saveCachedTable(cacheKey, members as any[]);
+        return members;
+      } catch (error) {
+        const cached = ((await getCachedTable(cacheKey)) as Member[]) || [];
+        if (cached.length > 0 || isNetworkError(error)) {
+          return cached.map((m) => ({ ...m, status: m.status || "offline_cached" }));
         }
         throw error;
       }
@@ -608,19 +512,14 @@ export default function UserManagement() {
       if (!onlineReady) return ((await getCachedTable(cacheKey)) as Invite[]) || [];
 
       try {
-        const { data, error } = await (supabase as any)
-          .from("user_invites")
-          .select("*")
-          .eq("tenant_id", tenantId)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        const rows = (data ?? []).map((invite: any) => ({ ...invite, role: normalizeRole(invite.role) }));
-        await saveCachedTable(cacheKey, rows);
-        return rows;
-      } catch (error: any) {
-        if (isNetworkError(error)) return ((await getCachedTable(cacheKey)) as Invite[]) || [];
+        const { data } = await usersApi.invites();
+        // The token is never in this payload — only its hash is stored, and
+        // the plaintext is handed back exactly once at creation.
+        await saveCachedTable(cacheKey, data as any[]);
+        return data as unknown as Invite[];
+      } catch (error) {
+        const cached = ((await getCachedTable(cacheKey)) as Invite[]) || [];
+        if (cached.length > 0 || isNetworkError(error)) return cached;
         throw error;
       }
     },
@@ -637,18 +536,17 @@ export default function UserManagement() {
       if (!onlineReady) return ((await getCachedTable(cacheKey)) as ActivityLog[]) || [];
 
       try {
-        const { data, error } = await (supabase as any)
-          .from("activity_logs")
-          .select("id, user_id, user, action, module, description, created_at")
-          .eq("tenant_id", tenantId)
-          .eq("user_id", profileUser.user_id)
-          .order("created_at", { ascending: false })
-          .limit(25);
-        if (error) throw error;
-        await saveCachedTable(cacheKey, data ?? []);
-        return data ?? [];
-      } catch (error: any) {
-        if (isNetworkError(error)) return ((await getCachedTable(cacheKey)) as ActivityLog[]) || [];
+        // Written by the server on every authority change, so the trail cannot
+        // be forgotten by a client that failed to log its own action.
+        const { data } = await usersApi.activity(500);
+        const mine = (data as any[]).filter((row) => row.user_id === profileUser.user_id
+          || row.target_id === profileUser.user_id);
+
+        await saveCachedTable(cacheKey, mine);
+        return mine as unknown as ActivityLog[];
+      } catch (error) {
+        const cached = ((await getCachedTable(cacheKey)) as ActivityLog[]) || [];
+        if (cached.length > 0 || isNetworkError(error)) return cached;
         throw error;
       }
     },
@@ -661,41 +559,39 @@ export default function UserManagement() {
     queryFn: async (): Promise<RolePermission[]> => {
       const cacheKey = makeCacheKey(`admin_role_permissions_${selectedRole}`, tenantId);
 
-      const buildRows = (existing: RolePermission[]) =>
-        MODULES.map((module) => {
-          const found = existing.find((p: RolePermission) => p.module === module);
-          return (
-            found ?? {
-              tenant_id: tenantId!,
-              role: selectedRole,
-              module,
-              ...getDefaultPermissionForRole(selectedRole, module),
-            }
-          );
-        });
-
-      if (!onlineReady) {
-        const cached = ((await getCachedTable(cacheKey)) as RolePermission[]) || [];
-        return cached.length ? buildRows(cached) : buildRows([]);
-      }
+      if (!onlineReady) return ((await getCachedTable(cacheKey)) as RolePermission[]) || [];
 
       try {
-        const { data, error } = await (supabase as any)
-          .from("role_permissions")
-          .select("*")
-          .eq("tenant_id", tenantId)
-          .eq("role", selectedRole);
+        /*
+         * The server answers with the whole resolved matrix — defaults merged
+         * with this workspace's overrides — rather than just the differences.
+         *
+         * That is deliberate: a screen that merges those itself drifts from
+         * what the API enforces the first time either side changes, and then
+         * shows a checkbox that does not match reality. Here the checkboxes
+         * are simply what the server said it will do.
+         */
+        const matrix = await usersApi.permissionMatrix();
+        const effective = new Set(
+          matrix.roles.find((r) => r.role === selectedRole)?.effective ?? []
+        );
 
-        if (error) throw error;
+        const rows: RolePermission[] = MODULES.map((module) => ({
+          tenant_id: tenantId!,
+          role: selectedRole,
+          module,
+          can_view: effective.has(`${module}.view`),
+          can_create: effective.has(`${module}.create`),
+          can_edit: effective.has(`${module}.update`),
+          can_delete: effective.has(`${module}.delete`),
+          can_approve: false,
+        })) as RolePermission[];
 
-        const rows = buildRows(data ?? []);
-        await saveCachedTable(cacheKey, rows);
+        await saveCachedTable(cacheKey, rows as any[]);
         return rows;
-      } catch (error: any) {
-        if (isNetworkError(error)) {
-          const cached = ((await getCachedTable(cacheKey)) as RolePermission[]) || [];
-          return cached.length ? buildRows(cached) : buildRows([]);
-        }
+      } catch (error) {
+        const cached = ((await getCachedTable(cacheKey)) as RolePermission[]) || [];
+        if (cached.length > 0 || isNetworkError(error)) return cached;
         throw error;
       }
     },
@@ -819,142 +715,98 @@ export default function UserManagement() {
     }
   };
 
-  const seedPermissionsForRole = async (targetRole: Role) => {
-    if (!onlineReady) throw new Error("Permission changes require online login and internet.");
-    if (!tenantId) throw new Error("No active workspace");
-
-    const rows = MODULES.map((module) => ({
-      tenant_id: tenantId,
-      role: targetRole,
-      module,
-      ...getDefaultPermissionForRole(targetRole, module),
-    }));
-
-    const { error } = await (supabase as any).from("role_permissions").upsert(rows, {
-      onConflict: "tenant_id,role,module",
-    });
-
-    if (error) throw error;
-  };
 
   const inviteUser = useMutation({
-    mutationFn: async () => {
-      if (!onlineReady) throw new Error("User invitations require online login and internet.");
-      if (!tenantId || !user) throw new Error("No active workspace");
-      if (!inviteEmail.trim()) throw new Error("Email is required");
-      if (!isValidEmail(inviteEmail)) throw new Error("Enter a valid email address.");
+    mutationFn: async ({ email, role }: { email: string; role: Role }) => {
+      if (!onlineReady) throw new Error("Inviting people requires an internet connection.");
+      if (!tenantId) throw new Error("No active workspace");
 
-      await seedPermissionsForRole(inviteRole);
-
-      const { data, error } = await (supabase as any)
-        .from("user_invites")
-        .insert({
-          tenant_id: tenantId,
-          email: inviteEmail.trim().toLowerCase(),
-          role: inviteRole,
-          status: "pending",
-          invited_by: user.id,
-        })
-        .select("*")
-        .single();
-
-      if (error) throw error;
-      return data as Invite;
+      /*
+       * The server refuses to invite into a role at or above the inviter's,
+       * or to invite someone who is already a member, and returns the invite
+       * token exactly once — only its hash is stored, because an invite link
+       * is a credential until it is used.
+       */
+      return usersApi.invite(email.trim(), role);
     },
-    onSuccess: async (invite) => {
-      const link = buildInviteLink(invite.id);
-      setLastInviteLink(link);
-      await createAudit("invite_created", `Invite created for ${invite.email}`, { role: invite.role });
-
-      try {
-        await navigator.clipboard.writeText(link);
-        toast.success("Invite created, permissions prepared, and link copied");
-      } catch {
-        toast.success("Invite created and permissions prepared");
-      }
-
-      setInviteEmail("");
-      setInviteRole("cashier");
+    onSuccess: (invite) => {
+      toast.success(lastSuccessMessage ?? "Invitation created");
+      setLastInviteLink(`${window.location.origin}/accept-invite?token=${invite.token}`);
       qc.invalidateQueries({ queryKey: ["admin-invites", tenantId] });
-      qc.invalidateQueries({ queryKey: ["admin-role-permissions", tenantId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const bulkInvite = useMutation({
     mutationFn: async () => {
-      if (!onlineReady) throw new Error("Bulk invitations require online login and internet.");
-      if (!tenantId || !user) throw new Error("No active workspace");
-      const rows = parseBulkEmails(bulkText, inviteRole);
-      if (!rows.length) throw new Error("Paste at least one valid email address.");
+      if (!onlineReady) throw new Error("Inviting people requires an internet connection.");
+      if (!tenantId) throw new Error("No active workspace");
 
-      for (const uniqueRole of Array.from(new Set(rows.map((row) => row.role)))) {
-        await seedPermissionsForRole(uniqueRole);
+      const rows = parseBulkEmails(bulkText, inviteRole);
+      if (rows.length === 0) throw new Error("No valid email addresses found");
+
+      /*
+       * One at a time rather than one batch insert. Each invite is checked
+       * individually — already a member, already invited, role above the
+       * inviter's — and one bad address should not lose the rest, so failures
+       * are collected and reported instead of aborting the run.
+       */
+      const failed: string[] = [];
+      let created = 0;
+
+      for (const row of rows) {
+        try {
+          await usersApi.invite(row.email, row.role);
+          created += 1;
+        } catch (error: any) {
+          failed.push(`${row.email}: ${error?.message ?? "failed"}`);
+        }
       }
 
-      const payload = rows.map((row) => ({
-        tenant_id: tenantId,
-        email: row.email.toLowerCase(),
-        role: row.role,
-        status: "pending",
-        invited_by: user.id,
-      }));
-
-      const { data, error } = await (supabase as any).from("user_invites").insert(payload).select("*");
-      if (error) throw error;
-      return data as Invite[];
+      return { created, failed };
     },
-    onSuccess: async (invites) => {
-      const links = invites.map((invite) => `${invite.email}: ${buildInviteLink(invite.id)}`).join("\n");
-      await createAudit("bulk_invite_created", `${invites.length} bulk invite(s) created`, { count: invites.length });
-      setBulkText("");
-      setBulkDialogOpen(false);
+    onSuccess: ({ created, failed }) => {
+      if (created > 0) toast.success(`${created} invitation(s) created`);
+      if (failed.length > 0) {
+        toast.error(`${failed.length} could not be invited`, {
+          description: failed.slice(0, 3).join("; "),
+          duration: 10000,
+        });
+      }
       qc.invalidateQueries({ queryKey: ["admin-invites", tenantId] });
-      toast.success(`${invites.length} invite(s) created`);
-      downloadText(`shopcore-invite-links-${new Date().toISOString().slice(0, 10)}.txt`, links);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const updateMemberRole = useMutation({
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: Role }) => {
-      if (!onlineReady) throw new Error("Role changes require online login and internet.");
+      if (!onlineReady) throw new Error("Role changes require an internet connection.");
       if (!tenantId) throw new Error("No active workspace");
-      if (newRole === "owner" && currentRole !== "owner") throw new Error("Only the owner can assign owner role");
 
-      await seedPermissionsForRole(newRole);
-
-      const { data: existingRole, error: lookupError } = await (supabase as any)
-        .from("user_roles")
-        .select("id")
-        .eq("tenant_id", tenantId)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (lookupError) throw lookupError;
-
-      if (existingRole?.id) {
-        const { error: updateError } = await (supabase as any)
-          .from("user_roles")
-          .update({ role: newRole })
-          .eq("id", existingRole.id)
-          .eq("tenant_id", tenantId);
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await (supabase as any).from("user_roles").insert({ tenant_id: tenantId, user_id: userId, role: newRole });
-        if (insertError) throw insertError;
-      }
-
-      const cacheKey = makeCacheKey("admin_members", tenantId);
-      const cached = ((await getCachedTable(cacheKey)) as Member[]) || [];
-      await saveCachedTable(cacheKey, cached.map((member) => member.user_id === userId ? { ...member, role: newRole } : member));
+      /*
+       * This wrote to `user_roles` while the API read `tenant_members`, so
+       * changing someone's role here changed nothing the server believed: the
+       * screen showed the new role and every request kept using the old one.
+       *
+       * One call to the endpoint that owns the decision. It enforces the rules
+       * this screen cannot be trusted with — you may not change your own role,
+       * assign one at or above your own, act on someone who outranks you, or
+       * leave the workspace without an owner — and writes the change to the
+       * audit log itself, so there is no separate bookkeeping to get wrong.
+       */
+      await usersApi.assignRole(userId, newRole);
       return { userId, newRole };
     },
-    onSuccess: async ({ userId, newRole }) => {
-      await createAudit("role_updated", `Role updated to ${newRole}`, { userId, role: newRole });
-      toast.success("Role updated and permissions prepared");
+    onSuccess: ({ userId, newRole }) => {
+      toast.success(lastSuccessMessage ?? "Role updated");
       qc.invalidateQueries({ queryKey: ["admin-members", tenantId] });
       qc.invalidateQueries({ queryKey: ["admin-role-permissions", tenantId] });
+      qc.invalidateQueries({ queryKey: ["iam-user-activity", tenantId] });
+      void userId;
+      void newRole;
     },
+    // The server's message names exactly which rule refused, so it is shown
+    // rather than replaced with something vaguer.
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -987,132 +839,116 @@ export default function UserManagement() {
 
   const removeMember = useMutation({
     mutationFn: async (userId: string) => {
-      if (!onlineReady) throw new Error("Removing members requires online login and internet.");
+      if (!onlineReady) throw new Error("Removing members requires an internet connection.");
       if (!tenantId) throw new Error("No active workspace");
 
-      const target = membersQ.data?.find((m) => m.user_id === userId);
-      if (target?.role === "owner") throw new Error("Owner cannot be removed here");
-
-      const { error } = await (supabase as any)
-        .from("tenant_members")
-        .update({ status: "suspended", removed_at: new Date().toISOString() })
-        .eq("tenant_id", tenantId)
-        .eq("user_id", userId);
-      if (error) {
-        const { error: fallbackError } = await (supabase as any)
-          .from("tenant_members")
-          .update({ status: "suspended" })
-          .eq("tenant_id", tenantId)
-          .eq("user_id", userId);
-        if (fallbackError) throw fallbackError;
-      }
-
-      const cacheKey = makeCacheKey("admin_members", tenantId);
-      const cached = ((await getCachedTable(cacheKey)) as Member[]) || [];
-      await saveCachedTable(cacheKey, cached.map((member) => member.user_id === userId ? { ...member, status: "suspended" } : member));
-      await savePending("tenant_members", { tenant_id: tenantId, user_id: userId, status: "suspended", operation: "update", sync_status: "synced", updated_offline_at: new Date().toISOString() } as any).catch(() => undefined);
+      // The server refuses to remove the last owner, to let anyone remove
+      // themselves, or to let you act on someone senior to you.
+      await usersApi.removeMember(userId);
       return userId;
     },
-    onSuccess: async (userId) => {
-      await createAudit("member_removed", "Member removed from workspace", { userId });
-      toast.success("Member removed");
+    onSuccess: () => {
+      toast.success(lastSuccessMessage ?? "Member removed");
       qc.invalidateQueries({ queryKey: ["admin-members", tenantId] });
+      qc.invalidateQueries({ queryKey: ["iam-user-activity", tenantId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const cancelInvite = useMutation({
     mutationFn: async (id: string) => {
-      if (!onlineReady) throw new Error("Cancelling invites requires online login and internet.");
-      const { error } = await (supabase as any).from("user_invites").update({ status: "cancelled" }).eq("id", id);
-      if (error) throw error;
-
-      const cacheKey = makeCacheKey("admin_invites", tenantId);
-      const cached = ((await getCachedTable(cacheKey)) as Invite[]) || [];
-      await saveCachedTable(cacheKey, cached.map((invite) => invite.id === id ? { ...invite, status: "cancelled" } : invite));
+      if (!onlineReady) throw new Error("Cancelling invites requires an internet connection.");
+      await usersApi.cancelInvite(id);
       return id;
     },
-    onSuccess: async (id) => {
-      await createAudit("invite_cancelled", "Invite cancelled", { inviteId: id });
-      toast.success("Invite cancelled");
+    onSuccess: () => {
+      toast.success(lastSuccessMessage ?? "Invitation cancelled");
       qc.invalidateQueries({ queryKey: ["admin-invites", tenantId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const updatePermission = async (permission: RolePermission, key: PermissionKey, value: boolean) => {
-    if (!tenantId || !canManage || !onlineReady) {
-      toast.info("Permission changes require online login and internet.");
-      return;
-    }
-
-    const payload = {
-      tenant_id: tenantId,
-      role: selectedRole,
-      module: permission.module,
-      can_view: permission.can_view,
-      can_create: permission.can_create,
-      can_edit: permission.can_edit,
-      can_delete: permission.can_delete,
-      can_approve: permission.can_approve,
-      [key]: value,
-    };
-
-    const { error } = await (supabase as any).from("role_permissions").upsert(payload, {
-      onConflict: "tenant_id,role,module",
-    });
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    const cacheKey = makeCacheKey(`admin_role_permissions_${selectedRole}`, tenantId);
-    const cached = ((await getCachedTable(cacheKey)) as RolePermission[]) || [];
-    await saveCachedTable(
-      cacheKey,
-      MODULES.map((module) => {
-        const existing = cached.find((row) => row.module === module);
-        if (module === permission.module) return payload as RolePermission;
-        return (
-          existing ??
-          ({ tenant_id: tenantId, role: selectedRole, module, ...getDefaultPermissionForRole(selectedRole, module) } as RolePermission)
-        );
-      })
-    );
-
-    await createAudit("permission_updated", `${moduleLabel(permission.module)} ${key} set to ${value}`, {
-      role: selectedRole,
-      module: permission.module,
-      key,
-      value,
-    });
-
-    qc.invalidateQueries({ queryKey: ["admin-role-permissions", tenantId, selectedRole] });
+  /**
+   * The page thinks in per-module checkboxes; the API thinks in
+   * `module.action` permissions. They map one to one, so the translation is a
+   * lookup rather than a reconciliation.
+   *
+   * `can_approve` has no general equivalent — approval means something
+   * different in each module — so it maps only where the API has a specific
+   * permission for it, and is otherwise not offered.
+   */
+  const PERMISSION_KEY_TO_ACTION: Record<PermissionKey, string | null> = {
+    can_view: "view",
+    can_create: "create",
+    can_edit: "update",
+    can_delete: "delete",
+    can_approve: null,
   };
 
-  const seedRoleDefaults = async () => {
-    if (!tenantId || !canManage || !onlineReady) {
-      toast.info("Generating defaults requires online login and internet.");
+  const updatePermission = async (permission: RolePermission, key: PermissionKey, value: boolean) => {
+    if (!canManage || !onlineReady) {
+      toast.info("Permission changes require an internet connection.");
+      return;
+    }
+
+    const action = PERMISSION_KEY_TO_ACTION[key];
+    if (!action) {
+      toast.info("That permission is not configurable for this module.");
       return;
     }
 
     try {
-      const rows = ROLES.flatMap((r) =>
-        MODULES.map((module) => ({ tenant_id: tenantId, role: r, module, ...getDefaultPermissionForRole(r, module) }))
-      );
-
-      const { error } = await (supabase as any).from("role_permissions").upsert(rows, {
-        onConflict: "tenant_id,role,module",
-      });
-
-      if (error) throw error;
-
-      await createAudit("permission_defaults_seeded", "Default permissions generated for all roles");
-      toast.success("Default permissions generated");
+      /*
+       * The server stores only the difference from the shipped default, and
+       * deletes the row when a permission is set back to it — so a workspace
+       * that customises one role still picks up sensible access to modules
+       * released later. It also refuses edits to a role at or above the
+       * caller's own, since "manage permissions" would otherwise be a way to
+       * grant yourself anything.
+       */
+      await usersApi.setPermission(selectedRole, `${permission.module}.${action}`, value);
+      toast.success(lastSuccessMessage ?? "Permissions updated");
       qc.invalidateQueries({ queryKey: ["admin-role-permissions", tenantId] });
+      qc.invalidateQueries({ queryKey: ["admin-members", tenantId] });
     } catch (error: any) {
-      toast.error(error?.message || "Failed to generate defaults");
+      toast.error(error?.message ?? "Could not update permissions");
+    }
+  };
+
+  /**
+   * Puts the selected role back to the permissions it ships with.
+   *
+   * Implemented as "remove every customisation", which is what reset means
+   * here: with the overrides gone the role resolves to the shipped defaults
+   * again, and keeps up with whatever those defaults become in future
+   * releases. Writing the defaults in as rows would freeze it instead.
+   */
+  const seedRoleDefaults = async () => {
+    if (!canManage || !onlineReady) {
+      toast.info("Permission changes require an internet connection.");
+      return;
+    }
+
+    try {
+      const matrix = await usersApi.permissionMatrix();
+      const customised = matrix.roles.find((r) => r.role === selectedRole)?.customised ?? [];
+
+      for (const override of customised) {
+        // Setting a permission back to its default deletes the row.
+        const isDefault = (matrix.roles.find((r) => r.role === selectedRole)?.defaults ?? [])
+          .includes(override.permission);
+        await usersApi.setPermission(selectedRole, override.permission, isDefault);
+      }
+
+      toast.success(
+        customised.length > 0
+          ? `${selectedRole} reset to its default permissions`
+          : `${selectedRole} is already on its defaults`
+      );
+      qc.invalidateQueries({ queryKey: ["admin-role-permissions", tenantId] });
+      qc.invalidateQueries({ queryKey: ["admin-members", tenantId] });
+    } catch (error: any) {
+      toast.error(error?.message ?? "Could not reset permissions");
     }
   };
 
@@ -1655,7 +1491,7 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
 
-                  <Button className="w-full rounded-2xl bg-blue-600 text-white hover:bg-blue-700" disabled={!canManage || inviteUser.isPending} onClick={() => inviteUser.mutate()}>
+                  <Button className="w-full rounded-2xl bg-blue-600 text-white hover:bg-blue-700" disabled={!canManage || inviteUser.isPending} onClick={() => inviteUser.mutate({ email: inviteEmail, role: inviteRole })}>
                     <Mail className="mr-2 h-4 w-4" />
                     {inviteUser.isPending ? "Creating..." : "Create Invite Link"}
                   </Button>

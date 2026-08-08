@@ -53,10 +53,43 @@ export const unitsRouter = createCrudModule({
 export const stockMovementsRouter = Router();
 stockMovementsRouter.use(requireAuth, requireTenant);
 
+/**
+ * An absent filter and a blank one mean the same thing: no filter.
+ *
+ * A screen with an unselected product dropdown sends `?product_id=`, which is
+ * how it says "all products" — and an empty string is not a uuid, so the
+ * request came back 400 and the page showed nothing. Blank is normalised to
+ * absent before validation rather than after, so the uuid rule only ever sees
+ * a value someone actually chose.
+ */
+const blankToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
+/**
+ * The most rows this endpoint will return in one call.
+ *
+ * A ledger screen legitimately wants a lot of history at once, so this is
+ * generous; it exists to stop one request asking for the whole table.
+ */
+const MAX_LIMIT = 5_000;
+
 const listQuerySchema = z.object({
-  productId: z.string().uuid().optional(),
-  movementType: z.string().trim().max(32).optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(200),
+  productId: z.preprocess(blankToUndefined, z.string().uuid().optional()),
+  movementType: z.preprocess(blankToUndefined, z.string().trim().max(32).optional()),
+  /*
+   * Clamped, not rejected. Asking for more rows than the server will give is
+   * not a malformed request — it is a caller who wants as much as it can get,
+   * and answering with the maximum is more useful than refusing. Rejecting it
+   * meant two screens asking for 5,000 movements got a 400 and rendered
+   * nothing at all where the history should have been.
+   */
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .catch(200)
+    .transform((value) => Math.min(value, MAX_LIMIT))
+    .default(200),
 });
 
 stockMovementsRouter.get(
