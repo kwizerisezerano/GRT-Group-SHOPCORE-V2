@@ -13,7 +13,9 @@
     "invalidToken": "Votre session est invalide ou a expiré. Veuillez vous reconnecter.",
     "passwordResetRequested": "Si cette adresse e-mail est enregistrée, un lien de réinitialisation lui a été envoyé.",
     "passwordResetCompleted": "Votre mot de passe a été mis à jour avec succès. Veuillez vous connecter avec votre nouveau mot de passe.",
-    "invalidResetToken": "Ce lien de réinitialisation est invalide ou a expiré. Veuillez en demander un nouveau."
+    "invalidResetToken": "Ce lien de réinitialisation est invalide ou a expiré. Veuillez en demander un nouveau.",
+    "noWorkspace": "Vous n'êtes pas membre de cet espace de travail.",
+    "missingPermission": "Vous n'avez pas l'autorisation de faire cela. Requis : {{permission}}."
   },
   "workspace": {
     "plansLoaded": "Formules d'abonnement chargées avec succès.",
@@ -157,5 +159,25 @@
     "unitNotFound": "Cette unité est introuvable.",
     "unitDuplicate": "Une unité portant ce nom existe déjà.",
     "movementListed": "Mouvements de stock chargés avec succès."
+  },
+  "users": {
+    "membersListed": "Membres de l'espace de travail chargés avec succès.",
+    "memberNotFound": "Ce membre est introuvable.",
+    "roleAssigned": "Rôle mis à jour avec succès.",
+    "memberRemoved": "Membre retiré de l'espace de travail.",
+    "cannotChangeOwnRole": "Vous ne pouvez pas modifier votre propre rôle.",
+    "cannotRemoveSelf": "Vous ne pouvez pas vous retirer vous-même de l'espace de travail.",
+    "targetOutranksYou": "Vous ne pouvez pas agir sur un {{role}} — son rang est supérieur au vôtre.",
+    "roleAboveYours": "Vous ne pouvez pas attribuer le rôle {{role}} — il est égal ou supérieur au vôtre.",
+    "lastOwner": "Un espace de travail doit conserver au moins un propriétaire.",
+    "permissionsListed": "Autorisations chargées avec succès.",
+    "permissionsUpdated": "Autorisations mises à jour avec succès.",
+    "invitesListed": "Invitations chargées avec succès.",
+    "inviteCreated": "Invitation créée avec succès.",
+    "inviteCancelled": "Invitation annulée.",
+    "inviteNotFound": "Cette invitation est introuvable.",
+    "inviteAlreadyPending": "Une invitation est déjà en attente pour cette adresse.",
+    "alreadyMember": "Cette personne est déjà membre de cet espace de travail.",
+    "activityListed": "Activité chargée avec succès."
   }
 }

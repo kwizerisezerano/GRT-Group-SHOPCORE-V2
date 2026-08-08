@@ -1,4 +1,5 @@
 import { prisma } from "../../db/prisma";
+import { loadPermissions } from "../../middleware/requirePermission";
 import {
   decryptNullable,
   emailBlindIndex,
@@ -197,6 +198,11 @@ export async function me(userId: string) {
   }
 
   const membership = await primaryMembership(userId);
+
+  const permissions = membership?.tenantId
+    ? (await loadPermissions(userId, membership.tenantId)).permissions
+    : [];
+
   const subscription = membership
     ? await prisma.tenantSubscription.findFirst({
         where: { tenantId: membership.tenantId },
@@ -221,9 +227,16 @@ export async function me(userId: string) {
         }
       : null,
     role: membership?.role ?? null,
-    // Fine-grained role_permissions loading is out of Phase 1 scope (that
-    // table isn't modeled yet - see Phase 5 in the migration roadmap).
-    permissions: [] as string[],
+    /*
+     * The permissions the server will actually enforce for this caller, so the
+     * client can hide what would be refused rather than guessing. This was an
+     * empty array with a note saying it was out of scope, which left the whole
+     * frontend permission model — RoleGate, canViewModule — fed by nothing.
+     *
+     * Also what the desktop app caches for offline use: with no connection it
+     * cannot ask, so it must already know.
+     */
+    permissions,
     subscription: subscription
       ? {
           plan_code: subscription.planCode,

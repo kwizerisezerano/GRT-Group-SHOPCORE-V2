@@ -535,6 +535,87 @@ export const stockMovementsApi = {
   },
 };
 
+/**
+ * Workspace membership: who is here, what they may do, and who changed it.
+ *
+ * Every write is an authority change, so the server enforces two rules this
+ * client cannot soften: you may not act on someone who outranks you, and you
+ * may not hand out a role at or above your own.
+ */
+export const usersApi = {
+  async members(): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request("/users/members", { method: "GET", auth: true })) as Record<string, unknown>[],
+    };
+  },
+  async assignRole(userId: string, role: string) {
+    return request(`/users/members/${userId}/role`, { method: "PATCH", body: { role }, auth: true });
+  },
+  async removeMember(userId: string) {
+    return request(`/users/members/${userId}`, { method: "DELETE", auth: true });
+  },
+
+  /** The whole matrix — defaults, this workspace's overrides, and the result. */
+  async permissionMatrix() {
+    return request("/users/permissions", { method: "GET", auth: true }) as Promise<{
+      catalogue: string[];
+      roles: {
+        role: string;
+        defaults: string[];
+        effective: string[];
+        customised: { permission: string; granted: boolean }[];
+      }[];
+    }>;
+  },
+  async setPermission(role: string, permission: string, granted: boolean) {
+    return request("/users/permissions", {
+      method: "PUT",
+      body: { role, permission, granted },
+      auth: true,
+    });
+  },
+
+  async invites(): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request("/users/invites", { method: "GET", auth: true })) as Record<string, unknown>[],
+    };
+  },
+  /** The token comes back exactly once — only its hash is stored. */
+  async invite(email: string, role: string) {
+    return request("/users/invites", { method: "POST", body: { email, role }, auth: true }) as Promise<{
+      id: string;
+      email: string;
+      role: string;
+      token: string;
+      expires_at: string;
+    }>;
+  },
+  async cancelInvite(id: string) {
+    return request(`/users/invites/${id}`, { method: "DELETE", auth: true });
+  },
+
+  async activity(limit = 200): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request(`/users/activity?limit=${limit}`, {
+        method: "GET",
+        auth: true,
+      })) as Record<string, unknown>[],
+    };
+  },
+
+  /**
+   * What the signed-in caller may do — the same answer the server enforces, so
+   * the UI hides what would be refused rather than guessing. Cached for
+   * offline use; see lib/permissions.ts.
+   */
+  async myPermissions() {
+    return request("/users/me/permissions", { method: "GET", auth: true }) as Promise<{
+      role: string | null;
+      permissions: string[];
+    }>;
+  },
+};
+
 /** The signed-in user's own profile — one row, addressed by the token. */
 export const profileApi = {
   async get() {

@@ -13,7 +13,9 @@
     "invalidToken": "Your session is invalid or has expired. Please sign in again.",
     "passwordResetRequested": "If that email is registered, a reset link has been sent to it.",
     "passwordResetCompleted": "Your password was updated successfully. Please sign in with your new password.",
-    "invalidResetToken": "This password reset link is invalid or has expired. Please request a new one."
+    "invalidResetToken": "This password reset link is invalid or has expired. Please request a new one.",
+    "noWorkspace": "You are not a member of this workspace.",
+    "missingPermission": "You do not have permission to do that. Required: {{permission}}."
   },
   "workspace": {
     "plansLoaded": "Subscription plans loaded successfully.",
@@ -157,5 +159,25 @@
     "unitNotFound": "That unit could not be found.",
     "unitDuplicate": "A unit with this name already exists.",
     "movementListed": "Stock movements loaded successfully."
+  },
+  "users": {
+    "membersListed": "Workspace members loaded successfully.",
+    "memberNotFound": "That member could not be found.",
+    "roleAssigned": "Role updated successfully.",
+    "memberRemoved": "Member removed from the workspace.",
+    "cannotChangeOwnRole": "You cannot change your own role.",
+    "cannotRemoveSelf": "You cannot remove yourself from the workspace.",
+    "targetOutranksYou": "You cannot act on a {{role}} — they rank above you.",
+    "roleAboveYours": "You cannot assign the {{role}} role — it is at or above your own.",
+    "lastOwner": "A workspace must keep at least one owner.",
+    "permissionsListed": "Permissions loaded successfully.",
+    "permissionsUpdated": "Permissions updated successfully.",
+    "invitesListed": "Invitations loaded successfully.",
+    "inviteCreated": "Invitation created successfully.",
+    "inviteCancelled": "Invitation cancelled.",
+    "inviteNotFound": "That invitation could not be found.",
+    "inviteAlreadyPending": "An invitation is already pending for this address.",
+    "alreadyMember": "That person is already a member of this workspace.",
+    "activityListed": "Activity loaded successfully."
   }
 }

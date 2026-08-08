@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { prisma } from "../../db/prisma";
 import { signAccessToken } from "../../lib/jwt";
+import { seedWorkspace } from "../../test/workspace";
 
 /**
  * Customers and suppliers hold real personal data, so these tests care about
@@ -14,8 +15,10 @@ const app = createApp();
 
 const TENANT_A = "cccccccc-1111-4111-8111-cccccccccccc";
 const TENANT_B = "dddddddd-2222-4222-8222-dddddddddddd";
-const tokenA = signAccessToken({ sub: "cccccccc-1111-4111-8111-eeeeeeeeeeee", tenantId: TENANT_A, role: "owner" });
-const tokenB = signAccessToken({ sub: "dddddddd-2222-4222-8222-ffffffffffff", tenantId: TENANT_B, role: "owner" });
+const USER_A = "cccccccc-1111-4111-8111-eeeeeeeeeeee";
+const USER_B = "dddddddd-2222-4222-8222-ffffffffffff";
+const tokenA = signAccessToken({ sub: USER_A, tenantId: TENANT_A, role: "owner" });
+const tokenB = signAccessToken({ sub: USER_B, tenantId: TENANT_B, role: "owner" });
 
 const asA = (r: request.Test) => r.set("Authorization", `Bearer ${tokenA}`);
 const asB = (r: request.Test) => r.set("Authorization", `Bearer ${tokenB}`);
@@ -30,12 +33,8 @@ async function cleanup() {
 
 beforeAll(async () => {
   await cleanup();
-  await prisma.tenant.createMany({
-    data: [
-      { id: TENANT_A, name: "CRM Tenant A" },
-      { id: TENANT_B, name: "CRM Tenant B" },
-    ],
-  });
+  await seedWorkspace({ tenantId: TENANT_A, userId: USER_A, role: "owner" });
+  await seedWorkspace({ tenantId: TENANT_B, userId: USER_B, role: "owner" });
 });
 
 afterAll(async () => {

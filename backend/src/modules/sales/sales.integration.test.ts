@@ -4,6 +4,7 @@ import { createApp } from "../../app";
 import { prisma } from "../../db/prisma";
 import { phoneBlindIndex } from "../../lib/crypto";
 import { signAccessToken } from "../../lib/jwt";
+import { cleanupWorkspace, seedWorkspace } from "../../test/workspace";
 
 /**
  * The sales module's job is to be atomic and to be right about money and
@@ -45,7 +46,7 @@ async function makeProduct(name: string, stock: number, price = 1000, taxRate = 
 
 beforeAll(async () => {
   await cleanup();
-  await prisma.tenant.create({ data: { id: TENANT, name: "Sales Tenant" } });
+  await seedWorkspace({ tenantId: TENANT, userId: USER, role: "owner" });
 });
 
 afterAll(async () => {
@@ -529,11 +530,7 @@ describe("offline sales and replay", () => {
     // from returning another shop's sale.
     const otherTenant = "eeeeeeee-7777-4777-8777-eeeeeeeeeeee";
     const otherUser = "eeeeeeee-7777-4777-8777-ffffffffffff";
-    await prisma.tenant.upsert({
-      where: { id: otherTenant },
-      create: { id: otherTenant, name: "Other Shop" },
-      update: {},
-    });
+    await seedWorkspace({ tenantId: otherTenant, userId: otherUser, role: "owner", tenantName: "Other Shop" });
     const otherToken = signAccessToken({ sub: otherUser, tenantId: otherTenant, role: "owner" });
 
     const mine = await makeProduct("Shared Key Mine", 10);
@@ -560,7 +557,7 @@ describe("offline sales and replay", () => {
     await prisma.stockMovement.deleteMany({ where: { tenantId: otherTenant } });
     await prisma.sale.deleteMany({ where: { tenantId: otherTenant } });
     await prisma.product.deleteMany({ where: { tenantId: otherTenant } });
-    await prisma.tenant.delete({ where: { id: otherTenant } });
+    await cleanupWorkspace({ tenantId: otherTenant, userId: otherUser });
   });
 });
 

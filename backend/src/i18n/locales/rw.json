@@ -13,7 +13,9 @@
     "invalidToken": "Igihe cyawe cyo gukoresha ntikiremewe cyangwa cyarangiye. Ongera winjire.",
     "passwordResetRequested": "Niba iyo imeyili yanditswe, link yo guhindura ijambo ry'ibanga yoherejwe kuri yo.",
     "passwordResetCompleted": "Ijambo ry'ibanga ryawe ryahinduwe neza. Injira ukoresheje irishya.",
-    "invalidResetToken": "Iyi link yo guhindura ijambo ry'ibanga ntiyemewe cyangwa yarangiye. Saba indi."
+    "invalidResetToken": "Iyi link yo guhindura ijambo ry'ibanga ntiyemewe cyangwa yarangiye. Saba indi.",
+    "noWorkspace": "Ntabwo uri umunyamuryango w'iki kibanza cy'akazi.",
+    "missingPermission": "Ntufite uburenganzira bwo gukora ibyo. Bisabwa: {{permission}}."
   },
   "workspace": {
     "plansLoaded": "Gahunda zo kwiyandikisha zapakiwe neza.",
@@ -157,5 +159,25 @@
     "unitNotFound": "Icyo gipimo nticyabonetse.",
     "unitDuplicate": "Igipimo gifite iri zina kirahari.",
     "movementListed": "Ingendo z'ububiko zatunganijwe neza."
+  },
+  "users": {
+    "membersListed": "Abanyamuryango b'ikibanza cy'akazi batunganijwe neza.",
+    "memberNotFound": "Uwo munyamuryango ntiyabonetse.",
+    "roleAssigned": "Uruhare rwavuguruwe neza.",
+    "memberRemoved": "Umunyamuryango yakuwe mu kibanza cy'akazi.",
+    "cannotChangeOwnRole": "Ntushobora guhindura uruhare rwawe bwite.",
+    "cannotRemoveSelf": "Ntushobora kwikura mu kibanza cy'akazi.",
+    "targetOutranksYou": "Ntushobora gukorera {{role}} — arengeje urwego rwawe.",
+    "roleAboveYours": "Ntushobora gutanga uruhare rwa {{role}} — runganya cyangwa rurenga urwawe.",
+    "lastOwner": "Ikibanza cy'akazi kigomba kugumana nibura nyirayo umwe.",
+    "permissionsListed": "Uburenganzira bwatunganijwe neza.",
+    "permissionsUpdated": "Uburenganzira bwavuguruwe neza.",
+    "invitesListed": "Ubutumire bwatunganijwe neza.",
+    "inviteCreated": "Ubutumire bwaremwe neza.",
+    "inviteCancelled": "Ubutumire bwahagaritswe.",
+    "inviteNotFound": "Ubwo butumire ntibwabonetse.",
+    "inviteAlreadyPending": "Hari ubutumire bwategereje kuri iyi aderesi.",
+    "alreadyMember": "Uwo muntu ari umunyamuryango w'iki kibanza cy'akazi.",
+    "activityListed": "Ibikorwa byatunganijwe neza."
   }
 }

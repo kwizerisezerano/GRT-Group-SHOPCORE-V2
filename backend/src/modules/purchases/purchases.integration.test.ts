@@ -4,6 +4,7 @@ import { createApp } from "../../app";
 import { prisma } from "../../db/prisma";
 import { encrypt } from "../../lib/crypto";
 import { signAccessToken } from "../../lib/jwt";
+import { seedWorkspace } from "../../test/workspace";
 
 /**
  * A goods receipt is a sale in reverse, and wrong in the same ways: stock that
@@ -45,7 +46,7 @@ async function makeProduct(name: string, stock: number, costPrice = 500) {
 
 beforeAll(async () => {
   await cleanup();
-  await prisma.tenant.create({ data: { id: TENANT, name: "Purchase Tenant" } });
+  await seedWorkspace({ tenantId: TENANT, userId: USER, role: "owner" });
 });
 
 afterAll(async () => {

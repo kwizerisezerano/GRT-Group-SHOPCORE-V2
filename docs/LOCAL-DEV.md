@@ -524,3 +524,101 @@ like it worked when it did not:
 - Reporting and the timer loop both scheduled the next check, so the fast
   confirmation retry was immediately overwritten by the idle cadence and an
   outage took a full interval to confirm.
+
+---
+
+## 16. Roles and permissions
+
+Until this was built, a role was a label. `requireAuth` read one off the token
+and **nothing ever looked at it** — every authenticated member of a workspace
+could call every endpoint. A cashier could delete products, read cost prices
+and margins, receive stock, or change what things sell for. The UI hid those
+screens, which is worth doing and is not security: the API is the boundary.
+
+### How it resolves
+
+```
+effective = defaults(role) + granted(tenant, role) - revoked(tenant, role)
+```
+
+Defaults ship in `backend/src/lib/permissions.ts`. Only a workspace's
+*differences* are stored (`role_permissions`), so a workspace that customised
+one role still gets sensible access to modules shipped later, with no data
+migration. Setting a permission back to its default deletes the row rather
+than storing it.
+
+### The role is read from the database, not the token
+
+Every guarded request does one indexed lookup on `tenant_members`. That is
+deliberate: a JWT carries whatever was true when it was issued, so reading
+authority from it means demoting someone does not actually demote them until
+their token expires — precisely the window in which it matters. A role change
+now takes effect on the very next request.
+
+No membership row means no permissions. Not "fall back to the token", not
+"assume a default role".
+
+### Rules that stop a role change being a takeover
+
+| Rule | Why |
+|---|---|
+| You cannot change your own role | Otherwise self-promotion satisfies the rank check trivially |
+| You cannot assign a role at or above your own | An admin minting an owner is how a workspace is seized |
+| You cannot act on someone who outranks you | Peers do not overrule each other |
+| The last owner cannot be demoted or removed | Otherwise nobody can ever administer the workspace again |
+
+Every one of these is written to `activity_logs`.
+
+### Offline
+
+`GET /api/users/me/permissions` returns exactly what the server enforces, and
+the client caches it (`frontend/src/lib/permissions.ts`), scoped to the user
+and workspace it was issued for and expiring after 30 days.
+
+**Offline permission checks are advisory. The server is authoritative.** A
+disconnected till uses the cache to decide what to put on screen; anything done
+offline is replayed through the API when the connection returns and re-checked
+against the role the user has *then*. Someone demoted while a till was offline
+does not keep their old powers by staying offline — their queued work is
+refused at sync and quarantined with the server's reason.
+
+---
+
+## 17. The desktop app (Tauri)
+
+The packaged desktop app **could not reach its own backend at all**, which is
+the platform the client actually runs.
+
+Tauri serves the built frontend from `tauri://localhost` (or
+`http://tauri.localhost` on Windows). There is no Vite proxy in a packaged
+build, so a relative `/api/...` resolved against that scheme and reached
+nothing. Every request failed, the connectivity monitor correctly concluded the
+API was unreachable, and the app sat permanently offline with a queue that
+could never drain.
+
+`frontend/src/lib/apiBase.ts` now detects the desktop and resolves an absolute
+address:
+
+1. `VITE_API_URL` if set (a hosted deployment on another origin)
+2. the address this install was pointed at, from `localStorage`
+3. `http://127.0.0.1:4000`
+
+Kept in storage rather than baked in at build time so **one signed installer
+works for every shop** — the branch with a server at `192.168.1.50` and the one
+running everything on the till use the same binary:
+
+```js
+// in the desktop app's console, or from a settings screen
+import { setServerUrl } from "@/lib/apiBase";
+setServerUrl("http://192.168.1.50:4000");
+```
+
+The backend allows `tauri://localhost` and `http://tauri.localhost` regardless
+of `CORS_ORIGINS`. A browser never sends those origins, and every route still
+requires a bearer token — CORS decides which page may read an answer, not who
+may ask.
+
+```bash
+npm run tauri:dev      # from frontend/
+npm run tauri:build
+```

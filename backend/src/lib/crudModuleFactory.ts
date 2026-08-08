@@ -4,6 +4,8 @@ import { ZodTypeAny } from "zod";
 import { MessageKey } from "../i18n";
 import { requireAuth } from "../middleware/auth";
 import { requireTenant } from "../middleware/requireTenant";
+import { requirePermission } from "../middleware/requirePermission";
+import type { Permission } from "./permissions";
 import { sendSuccess } from "./apiResponse";
 import { toCamelCase, toSnakeCase } from "./caseMapping";
 import { asyncHandler } from "./asyncHandler";
@@ -45,6 +47,20 @@ type CrudModuleOptions = {
   snakeCaseWire?: boolean;
   /** Runs before delete; the place to refuse when dependants exist. */
   beforeDelete?: (id: string, req: Request) => Promise<void>;
+  /**
+   * What a caller must be allowed to do to reach each operation.
+   *
+   * Declared here rather than bolted onto each route so that a module cannot
+   * be added with its writes left open by omission — which is exactly how
+   * every endpoint in this application ended up callable by every member of a
+   * workspace, cashiers included.
+   */
+  permissions: {
+    view: Permission;
+    create: Permission;
+    update: Permission;
+    delete: Permission;
+  };
 };
 
 /**
@@ -94,6 +110,8 @@ export function createCrudModule(options: CrudModuleOptions): Router {
   const router = Router();
   router.use(requireAuth, requireTenant);
 
+  const can = (permission: Permission) => requirePermission(permission);
+
   const snakeWire = options.snakeCaseWire ?? true;
   const custom = options.serialize ?? ((row: Record<string, unknown>) => row);
   const serialize = (row: Record<string, unknown>) => {
@@ -123,6 +141,7 @@ export function createCrudModule(options: CrudModuleOptions): Router {
 
   router.get(
     "/",
+    can(options.permissions.view),
     asyncHandler(async (req, res) => {
       const rows: Record<string, unknown>[] = await table(req).findMany({
         orderBy: options.orderBy ?? { createdAt: "desc" },
@@ -133,6 +152,7 @@ export function createCrudModule(options: CrudModuleOptions): Router {
 
   router.get(
     "/:id",
+    can(options.permissions.view),
     asyncHandler(async (req, res) => {
       const row = await table(req).findFirst({ where: { id: req.params.id } });
       if (!row) throw HttpError.notFound(options.messages.notFound);
@@ -142,6 +162,7 @@ export function createCrudModule(options: CrudModuleOptions): Router {
 
   router.post(
     "/",
+    can(options.permissions.create),
     asyncHandler(async (req, res) => {
       let input = options.createSchema.parse(readBody(req.body)) as Record<string, unknown>;
       if (options.beforeWrite) input = await options.beforeWrite(input, req, {});
@@ -161,6 +182,7 @@ export function createCrudModule(options: CrudModuleOptions): Router {
 
   router.patch(
     "/:id",
+    can(options.permissions.update),
     asyncHandler(async (req, res) => {
       let input = options.updateSchema.parse(readBody(req.body)) as Record<string, unknown>;
 
@@ -184,6 +206,7 @@ export function createCrudModule(options: CrudModuleOptions): Router {
 
   router.delete(
     "/:id",
+    can(options.permissions.delete),
     asyncHandler(async (req, res) => {
       const existing = await table(req).findFirst({ where: { id: req.params.id } });
       if (!existing) throw HttpError.notFound(options.messages.notFound);

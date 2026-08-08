@@ -126,6 +126,12 @@ const createCustomerSchema = z.object({
 });
 
 export const customersRouter = createCrudModule({
+  permissions: {
+    view: "customers.view",
+    create: "customers.create",
+    update: "customers.update",
+    delete: "customers.delete",
+  },
   delegate: "customer",
   createSchema: createCustomerSchema,
   updateSchema: createCustomerSchema.partial(),
@@ -147,6 +153,12 @@ export const customersRouter = createCrudModule({
 const createSupplierSchema = z.object(partyShape);
 
 export const suppliersRouter = createCrudModule({
+  permissions: {
+    view: "suppliers.view",
+    create: "suppliers.create",
+    update: "suppliers.update",
+    delete: "suppliers.delete",
+  },
   delegate: "supplier",
   createSchema: createSupplierSchema,
   updateSchema: createSupplierSchema.partial(),
@@ -189,6 +201,12 @@ const createExpenseSchema = z.object({
 });
 
 export const expensesRouter = createCrudModule({
+  permissions: {
+    view: "expenses.view",
+    create: "expenses.create",
+    update: "expenses.update",
+    delete: "expenses.delete",
+  },
   delegate: "expense",
   createSchema: createExpenseSchema,
   updateSchema: createExpenseSchema.partial(),

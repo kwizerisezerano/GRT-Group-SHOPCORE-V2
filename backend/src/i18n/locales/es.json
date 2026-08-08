@@ -13,7 +13,9 @@
     "invalidToken": "Su sesión no es válida o ha expirado. Vuelva a iniciar sesión.",
     "passwordResetRequested": "Si ese correo electrónico está registrado, se ha enviado un enlace de restablecimiento.",
     "passwordResetCompleted": "Su contraseña se actualizó correctamente. Inicie sesión con su nueva contraseña.",
-    "invalidResetToken": "Este enlace de restablecimiento no es válido o ha expirado. Solicite uno nuevo."
+    "invalidResetToken": "Este enlace de restablecimiento no es válido o ha expirado. Solicite uno nuevo.",
+    "noWorkspace": "No es miembro de este espacio de trabajo.",
+    "missingPermission": "No tiene permiso para hacer eso. Se requiere: {{permission}}."
   },
   "workspace": {
     "plansLoaded": "Planes de suscripción cargados correctamente.",
@@ -157,5 +159,25 @@
     "unitNotFound": "No se encontró esa unidad.",
     "unitDuplicate": "Ya existe una unidad con este nombre.",
     "movementListed": "Movimientos de stock cargados correctamente."
+  },
+  "users": {
+    "membersListed": "Miembros del espacio de trabajo cargados correctamente.",
+    "memberNotFound": "No se encontró ese miembro.",
+    "roleAssigned": "Rol actualizado correctamente.",
+    "memberRemoved": "Miembro eliminado del espacio de trabajo.",
+    "cannotChangeOwnRole": "No puede cambiar su propio rol.",
+    "cannotRemoveSelf": "No puede eliminarse a sí mismo del espacio de trabajo.",
+    "targetOutranksYou": "No puede actuar sobre un {{role}}: tiene un rango superior al suyo.",
+    "roleAboveYours": "No puede asignar el rol {{role}}: es igual o superior al suyo.",
+    "lastOwner": "Un espacio de trabajo debe conservar al menos un propietario.",
+    "permissionsListed": "Permisos cargados correctamente.",
+    "permissionsUpdated": "Permisos actualizados correctamente.",
+    "invitesListed": "Invitaciones cargadas correctamente.",
+    "inviteCreated": "Invitación creada correctamente.",
+    "inviteCancelled": "Invitación cancelada.",
+    "inviteNotFound": "No se encontró esa invitación.",
+    "inviteAlreadyPending": "Ya hay una invitación pendiente para esta dirección.",
+    "alreadyMember": "Esa persona ya es miembro de este espacio de trabajo.",
+    "activityListed": "Actividad cargada correctamente."
   }
 }

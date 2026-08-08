@@ -8,6 +8,7 @@ import { HttpError } from "../../lib/httpError";
 import { applyStockMovement, type TransactionClient } from "../../lib/stockMovement";
 import { runInTransaction } from "../../lib/transaction";
 import { requireAuth } from "../../middleware/auth";
+import { requirePermission } from "../../middleware/requirePermission";
 import { requireTenant } from "../../middleware/requireTenant";
 
 /**
@@ -93,6 +94,7 @@ async function nextPurchaseNo(tx: TransactionClient, tenantId: string) {
 
 purchasesRouter.get(
   "/",
+  requirePermission("purchases.view"),
   asyncHandler(async (req, res) => {
     const purchases = await req.tenantPrisma!.purchase.findMany({
       orderBy: { createdAt: "desc" },
@@ -106,6 +108,7 @@ purchasesRouter.get(
 
 purchasesRouter.get(
   "/:id",
+  requirePermission("purchases.view"),
   asyncHandler(async (req, res) => {
     const purchase = await req.tenantPrisma!.purchase.findFirst({
       where: { id: req.params.id },
@@ -119,6 +122,7 @@ purchasesRouter.get(
 
 purchasesRouter.post(
   "/",
+  requirePermission("purchases.create"),
   asyncHandler(async (req, res) => {
     const body = req.body ?? {};
     const pick = (camel: string, snake: string) => body[camel] ?? body[snake];

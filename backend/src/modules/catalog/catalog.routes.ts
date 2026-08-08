@@ -40,6 +40,12 @@ function refuseWhenReferenced(field: "categoryId" | "brandId", messageKey: Param
 }
 
 export const categoriesRouter = createCrudModule({
+  permissions: {
+    view: "products.view",
+    create: "products.create",
+    update: "products.update",
+    delete: "products.delete",
+  },
   delegate: "category",
   createSchema: createCategorySchema,
   updateSchema: updateCategorySchema,
@@ -57,6 +63,12 @@ export const categoriesRouter = createCrudModule({
 });
 
 export const brandsRouter = createCrudModule({
+  permissions: {
+    view: "products.view",
+    create: "products.create",
+    update: "products.update",
+    delete: "products.delete",
+  },
   delegate: "brand",
   createSchema: createBrandSchema,
   updateSchema: updateBrandSchema,
@@ -74,6 +86,12 @@ export const brandsRouter = createCrudModule({
 });
 
 export const productsRouter = createCrudModule({
+  permissions: {
+    view: "products.view",
+    create: "products.create",
+    update: "products.update",
+    delete: "products.delete",
+  },
   delegate: "product",
   createSchema: createProductSchema,
   updateSchema: updateProductSchema,

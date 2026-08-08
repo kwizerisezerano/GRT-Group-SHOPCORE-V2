@@ -60,6 +60,7 @@ model User {
   ownedTenants         Tenant[]             @relation("TenantOwner")
   userRoles            UserRole[]
   workspaceMemberships WorkspaceMember[]
+  sales                Sale[]
 
   @@map("users")
 }
@@ -161,6 +162,9 @@ model Tenant {
   expiredProducts  ExpiredProduct[]
   invoiceCounters  InvoiceCounter[]
   units            Unit[]
+  rolePermissions  RolePermission[]
+  userInvites      UserInvite[]
+  activityLogs     ActivityLog[]
   products         Product[]
   purchases        Purchase[]
   qaAuditLogs      QaAuditLog[]
@@ -169,6 +173,7 @@ model Tenant {
   qaRuns           QaRun[]
   qaScreenshots    QaScreenshot[]
   qaSettings       QaSetting[]
+  sales            Sale[]
   saleItems        SaleItem[]
   stockMovements   StockMovement[]
   suppliers        Supplier[]
@@ -208,6 +213,88 @@ model UserRole {
 
   @@unique([userId, tenantId, role], name: "user_roles_unique")
   @@map("user_roles")
+}
+
+/// Per-workspace adjustments to what a role may do.
+///
+/// The shipped defaults in lib/permissions.ts are what a role means when
+/// nobody has said otherwise; rows here are a workspace's own grants and
+/// revocations on top. Storing only the differences — rather than seeding a
+/// full matrix per tenant — means a workspace that customised one role still
+/// picks up sensible access to modules shipped afterwards, with no data
+/// migration.
+model RolePermission {
+  id         String   @id @default(uuid()) @db.Char(36)
+  tenantId   String   @map("tenant_id") @db.Char(36)
+  role       String   @db.VarChar(32)
+  permission String   @db.VarChar(64)
+  /// true = granted beyond the default, false = revoked from it.
+  granted    Boolean  @default(true)
+  updatedBy  String?  @map("updated_by") @db.Char(36)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, role, permission])
+  @@index([tenantId])
+  @@map("role_permissions")
+}
+
+/// An invitation for someone to join a workspace in a named role.
+///
+/// The token is stored as a hash, never in the clear: an invite link is a
+/// credential until it is used, and a leaked database should not hand out
+/// workspace access. The email is encrypted like every other address, with a
+/// blind index so a pending invite can still be found by the address it went
+/// to.
+model UserInvite {
+  id             String    @id @default(uuid()) @db.Char(36)
+  tenantId       String    @map("tenant_id") @db.Char(36)
+  emailEncrypted String    @map("email_encrypted") @db.VarChar(512)
+  emailHash      String    @map("email_hash") @db.Char(64)
+  role           String    @db.VarChar(32)
+  tokenHash      String    @unique @map("token_hash") @db.VarChar(255)
+  status         String    @default("pending") @db.VarChar(16)
+  invitedBy      String?   @map("invited_by") @db.Char(36)
+  expiresAt      DateTime  @map("expires_at")
+  acceptedAt     DateTime? @map("accepted_at")
+  acceptedBy     String?   @map("accepted_by") @db.Char(36)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// One live invite per address per workspace. Enforced in application code
+  /// against status rather than by a partial index, which MySQL lacks.
+  @@index([tenantId, emailHash])
+  @@index([tenantId, status])
+  @@map("user_invites")
+}
+
+/// Who did what, and when.
+///
+/// Written for the changes where "it was like that when I got here" is not an
+/// acceptable answer — someone's role changing, a permission being granted, a
+/// member being removed. Append-only by convention: there is no update or
+/// delete path in the API.
+model ActivityLog {
+  id          String   @id @default(uuid()) @db.Char(36)
+  tenantId    String   @map("tenant_id") @db.Char(36)
+  userId      String?  @map("user_id") @db.Char(36)
+  actorLabel  String?  @map("actor_label") @db.VarChar(191)
+  action      String   @db.VarChar(64)
+  module      String?  @db.VarChar(64)
+  targetId    String?  @map("target_id") @db.Char(36)
+  description String?  @db.Text
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, module])
+  @@map("activity_logs")
 }
 
 model Workspace {
@@ -589,6 +676,17 @@ model Sale {
   date                   DateTime  @default(now())
   createdAt              DateTime  @default(now()) @map("created_at")
 
+  /*
+   * These relations were missing entirely — the model carried only the scalar
+   * tenantId/userId, so Prisma emitted no foreign keys for `sales` even though
+   * it did for `sale_items`. A sale was therefore tied to its workspace by
+   * nothing the database enforced, and deleting a tenant left its sales behind
+   * as rows no query could reach. See migration 20260810100000.
+   */
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // SetNull, not Cascade: removing a cashier must not erase the sales they
+  // recorded. The money changed hands whoever has since left.
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   saleItems     SaleItem[]
   creditedItems CreditedItem[]
 

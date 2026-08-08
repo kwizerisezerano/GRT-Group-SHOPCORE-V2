@@ -13,7 +13,9 @@
     "invalidToken": "Kipindi chako si halali au kimeisha muda. Tafadhali ingia tena.",
     "passwordResetRequested": "Ikiwa barua pepe hiyo imesajiliwa, kiungo cha kuweka upya kimetumwa kwake.",
     "passwordResetCompleted": "Nenosiri lako limebadilishwa kwa mafanikio. Tafadhali ingia kwa nenosiri lako jipya.",
-    "invalidResetToken": "Kiungo hiki cha kuweka upya si halali au kimeisha muda. Tafadhali omba kingine."
+    "invalidResetToken": "Kiungo hiki cha kuweka upya si halali au kimeisha muda. Tafadhali omba kingine.",
+    "noWorkspace": "Wewe si mwanachama wa eneo-kazi hili.",
+    "missingPermission": "Huna ruhusa ya kufanya hivyo. Inahitajika: {{permission}}."
   },
   "workspace": {
     "plansLoaded": "Mipango ya usajili imepakiwa kwa mafanikio.",
@@ -157,5 +159,25 @@
     "unitNotFound": "Kipimo hicho hakikupatikana.",
     "unitDuplicate": "Kipimo chenye jina hili tayari kipo.",
     "movementListed": "Mienendo ya hisa imepakiwa kwa mafanikio."
+  },
+  "users": {
+    "membersListed": "Wanachama wa eneo-kazi wamepakiwa kwa mafanikio.",
+    "memberNotFound": "Mwanachama huyo hakupatikana.",
+    "roleAssigned": "Jukumu limesasishwa kwa mafanikio.",
+    "memberRemoved": "Mwanachama ameondolewa kwenye eneo-kazi.",
+    "cannotChangeOwnRole": "Huwezi kubadilisha jukumu lako mwenyewe.",
+    "cannotRemoveSelf": "Huwezi kujiondoa mwenyewe kwenye eneo-kazi.",
+    "targetOutranksYou": "Huwezi kumtendea {{role}} — yuko juu yako kicheo.",
+    "roleAboveYours": "Huwezi kutoa jukumu la {{role}} — liko sawa au juu ya lako.",
+    "lastOwner": "Eneo-kazi lazima libaki na angalau mmiliki mmoja.",
+    "permissionsListed": "Ruhusa zimepakiwa kwa mafanikio.",
+    "permissionsUpdated": "Ruhusa zimesasishwa kwa mafanikio.",
+    "invitesListed": "Mialiko imepakiwa kwa mafanikio.",
+    "inviteCreated": "Mwaliko umeundwa kwa mafanikio.",
+    "inviteCancelled": "Mwaliko umeghairiwa.",
+    "inviteNotFound": "Mwaliko huo haukupatikana.",
+    "inviteAlreadyPending": "Tayari kuna mwaliko unaosubiri kwa anwani hii.",
+    "alreadyMember": "Mtu huyo tayari ni mwanachama wa eneo-kazi hili.",
+    "activityListed": "Shughuli zimepakiwa kwa mafanikio."
   }
 }

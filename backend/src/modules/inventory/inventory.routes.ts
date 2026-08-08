@@ -5,6 +5,7 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { toSnakeCase } from "../../lib/caseMapping";
 import { createCrudModule } from "../../lib/crudModuleFactory";
 import { requireAuth } from "../../middleware/auth";
+import { requirePermission } from "../../middleware/requirePermission";
 import { requireTenant } from "../../middleware/requireTenant";
 
 /**
@@ -28,6 +29,12 @@ const createUnitSchema = z.object({
 });
 
 export const unitsRouter = createCrudModule({
+  permissions: {
+    view: "products.view",
+    create: "products.create",
+    update: "products.update",
+    delete: "products.delete",
+  },
   delegate: "unit",
   createSchema: createUnitSchema,
   updateSchema: createUnitSchema.partial(),
@@ -54,6 +61,7 @@ const listQuerySchema = z.object({
 
 stockMovementsRouter.get(
   "/",
+  requirePermission("inventory.view"),
   asyncHandler(async (req, res) => {
     const query = listQuerySchema.parse({
       productId: req.query.productId ?? req.query.product_id,

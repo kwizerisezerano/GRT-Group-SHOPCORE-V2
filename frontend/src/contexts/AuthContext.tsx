@@ -9,6 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { authApi } from "@/lib/apiClient";
+import {
+  cachePermissions,
+  clearCachedPermissions,
+} from "@/lib/permissions";
 import type {
   ApiSession as Session,
   ApiUser as User,
@@ -1185,6 +1189,19 @@ export function AuthProvider({
           (me.permissions ??
             []) as RolePermission[];
 
+        /*
+         * Kept on the device so a disconnected till still knows what to put on
+         * screen. Advisory only — anything done offline is re-checked by the
+         * server when it syncs, so someone demoted while offline cannot keep
+         * their old powers by staying offline. See lib/permissions.ts.
+         */
+        cachePermissions({
+          userId: me.user.id,
+          tenantId: targetTenantId,
+          role: highestRole ?? null,
+          permissions: loadedPermissions as unknown as string[],
+        });
+
         const latestSubscription =
           me.subscription ?? null;
 
@@ -1583,6 +1600,8 @@ export function AuthProvider({
 
     authApi.clearStoredSession();
     clearCachedAuth();
+    // A shared till must not hand the next person the last one's authority.
+    clearCachedPermissions();
     disableOfflineMode();
 
     safeSetUser(null);

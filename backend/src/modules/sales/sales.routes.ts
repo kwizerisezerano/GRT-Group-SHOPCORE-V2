@@ -13,6 +13,7 @@ import { HttpError } from "../../lib/httpError";
 import { applyStockMovement, type TransactionClient } from "../../lib/stockMovement";
 import { runInTransaction } from "../../lib/transaction";
 import { requireAuth } from "../../middleware/auth";
+import { requirePermission } from "../../middleware/requirePermission";
 import { requireTenant } from "../../middleware/requireTenant";
 
 /**
@@ -180,6 +181,7 @@ async function nextInvoiceNo(tx: TransactionClient, tenantId: string) {
 
 salesRouter.get(
   "/",
+  requirePermission("sales.view"),
   asyncHandler(async (req, res) => {
     const sales = await req.tenantPrisma!.sale.findMany({
       orderBy: { createdAt: "desc" },
@@ -193,6 +195,7 @@ salesRouter.get(
 
 salesRouter.get(
   "/:id",
+  requirePermission("sales.view"),
   asyncHandler(async (req, res) => {
     const sale = await req.tenantPrisma!.sale.findFirst({
       where: { id: req.params.id },
@@ -206,6 +209,7 @@ salesRouter.get(
 
 salesRouter.post(
   "/",
+  requirePermission("sales.create"),
   asyncHandler(async (req, res) => {
     /*
      * Accept snake_case from the frontend, camelCase from scripts.

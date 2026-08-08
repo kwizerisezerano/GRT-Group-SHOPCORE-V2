@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { prisma } from "../../db/prisma";
 import { signAccessToken } from "../../lib/jwt";
+import { seedWorkspace } from "../../test/workspace";
 
 /**
  * Exercises the catalogue API end to end against real MySQL: HTTP in,
@@ -34,12 +35,8 @@ async function cleanup() {
 
 beforeAll(async () => {
   await cleanup();
-  await prisma.tenant.createMany({
-    data: [
-      { id: TENANT_A, name: "Tenant A" },
-      { id: TENANT_B, name: "Tenant B" },
-    ],
-  });
+  await seedWorkspace({ tenantId: TENANT_A, userId: USER_A, role: "owner" });
+  await seedWorkspace({ tenantId: TENANT_B, userId: USER_B, role: "owner" });
 });
 
 afterAll(async () => {
