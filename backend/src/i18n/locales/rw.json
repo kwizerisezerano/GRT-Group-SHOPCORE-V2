@@ -136,6 +136,7 @@
     "created": "Kugurisha byarangiye neza.",
     "notFound": "Icyo cyagurishijwe ntikibonetse.",
     "unknownProduct": "Igicuruzwa kimwe cyangwa byinshi muri iri gurisha ntibyabonetse.",
-    "insufficientStock": "Nta bicuruzwa bihagije bya {{product}} — hari {{available}}, wasabye {{requested}}."
+    "insufficientStock": "Nta bicuruzwa bihagije bya {{product}} — hari {{available}}, wasabye {{requested}}.",
+    "alreadyRecorded": "Iri gurisha ryari ryanditswe. Turasubiza inyemezabuguzi y'umwimerere."
   }
 }

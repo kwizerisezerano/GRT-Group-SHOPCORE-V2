@@ -1257,7 +1257,7 @@ export default function POS() {
     }),
   });
 
-  const completeOfflineSale = async (tendered: number) => {
+  const completeOfflineSale = async (tendered: number, clientRequestId: string) => {
     const receiptNo = `OFF-${Date.now().toString().slice(-8)}`;
     const invoiceNo = `OFF-INV-${Date.now().toString().slice(-8)}`;
     const change = selectedPayment === "cash" ? tendered - total : 0;
@@ -1296,6 +1296,19 @@ export default function POS() {
       user_id: user?.id,
       invoice_no: invoiceNo,
       receipt_no: receiptNo,
+      /*
+       * The same key the online attempt used, deliberately.
+       *
+       * The dangerous case is a checkout that reached the server and committed
+       * but whose reply was lost on the way back. The till sees a failure and
+       * queues the sale here, so without a shared key the sync would record it
+       * a second time — a duplicate sale, twice the stock gone, and no way to
+       * tell which one was real. Carrying the key through means that sync is a
+       * replay the server recognises and answers with the sale it already has.
+       */
+      client_request_id: clientRequestId,
+      source: "offline",
+      completed_at: new Date().toISOString(),
       customer_name: customerName.trim() || "Walk-in Customer",
       customer_phone: customerPhone.trim() || null,
       customer_tin: customerTin.trim() || null,
@@ -1563,11 +1576,25 @@ export default function POS() {
       return toast.error("Enter MoMo transaction code");
     }
 
+    /*
+     * One key for this sale, generated before we decide how to record it.
+     *
+     * It has to be chosen here rather than inside either path, because the
+     * paths can run one after the other: a checkout that reaches the server
+     * and commits, but whose reply is lost, lands in the catch below and gets
+     * queued offline. Sharing the key makes that later sync a replay the
+     * server recognises instead of a second sale.
+     */
+    const clientRequestId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `sale-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
     try {
       setIsSaving(true);
 
       if (shouldUseOfflineStorage()) {
-        await completeOfflineSale(tendered);
+        await completeOfflineSale(tendered, clientRequestId);
         return;
       }
 
@@ -1613,6 +1640,8 @@ export default function POS() {
         branch: BRANCH_NAME,
         cashier: user.email || "Cashier",
         receipt_no: receiptNo,
+        client_request_id: clientRequestId,
+        completed_at: new Date().toISOString(),
         notes: customerTin.trim()
           ? `TIN: ${customerTin.trim()}`
           : customerPhone.trim()
@@ -1811,7 +1840,8 @@ export default function POS() {
       console.error("SALE ERROR FULL:", error);
 
       if (shouldSaveSaleOffline(error)) {
-        await completeOfflineSale(tendered);
+        // Same key as the attempt that just failed — see completeOfflineSale.
+        await completeOfflineSale(tendered, clientRequestId);
         return;
       }
 

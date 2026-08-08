@@ -136,6 +136,7 @@
     "created": "Mauzo yamekamilika kwa mafanikio.",
     "notFound": "Mauzo hayo hayakupatikana.",
     "unknownProduct": "Bidhaa moja au zaidi katika mauzo haya hazikupatikana.",
-    "insufficientStock": "Hakuna hisa ya kutosha ya {{product}} — {{available}} zinapatikana, {{requested}} zimeombwa."
+    "insufficientStock": "Hakuna hisa ya kutosha ya {{product}} — {{available}} zinapatikana, {{requested}} zimeombwa.",
+    "alreadyRecorded": "Mauzo haya tayari yamesajiliwa. Tunarejesha risiti asili."
   }
 }

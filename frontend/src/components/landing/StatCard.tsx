@@ -3,8 +3,6 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
 import AnimatedCounter from "./live/AnimatedCounter";
 
-type Tone = "blue" | "emerald" | "orange" | "rose" | "violet" | "cyan" | "slate";
-
 type StatCardProps = {
   label: string;
   value: string | number;

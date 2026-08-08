@@ -446,6 +446,18 @@ export const salesApi = {
     cashier?: string | null;
     receipt_no?: string | null;
     notes?: string | null;
+    /**
+     * Idempotency key. Pick one when the sale is first attempted and reuse it
+     * for every retry of that same sale — including when a failed online
+     * attempt is queued offline and synced later. The server records the sale
+     * once and answers a replay with the original, so retrying is always safe
+     * and never doubles a sale.
+     */
+    client_request_id?: string;
+    /** A sale taken on a disconnected till. Permitted to drive stock negative. */
+    offline?: boolean;
+    /** When the till completed the sale, if that is not now. */
+    completed_at?: string;
   }): Promise<SaleRecord> {
     return request("/sales", { method: "POST", body: input, auth: true }) as Promise<SaleRecord>;
   },

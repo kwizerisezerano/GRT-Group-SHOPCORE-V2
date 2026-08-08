@@ -136,6 +136,7 @@
     "created": "Sale completed successfully.",
     "notFound": "That sale could not be found.",
     "unknownProduct": "One or more products in this sale could not be found.",
-    "insufficientStock": "Not enough stock for {{product}} — {{available}} available, {{requested}} requested."
+    "insufficientStock": "Not enough stock for {{product}} — {{available}} available, {{requested}} requested.",
+    "alreadyRecorded": "This sale was already recorded. Returning the original receipt."
   }
 }

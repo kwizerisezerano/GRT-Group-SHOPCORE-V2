@@ -841,6 +841,41 @@ export function useProductMutations() {
 }
 
 
+/**
+ * Strips the fields a sale update must not send to the server.
+ *
+ * Identity and audit columns are the server's to set, and the offline
+ * bookkeeping fields (`sync_status`, `operation`, the `*_offline_at` stamps)
+ * are local to this device — sending them would write this browser's queue
+ * state into the shared record. The line-item arrays go too: a sale's lines
+ * live in their own table and are never patched through the header.
+ */
+function sanitizeSaleUpdatePayload(sale: Partial<DbSale>) {
+  const clean: any = { ...sale };
+
+  delete clean.id;
+  delete clean.created_at;
+  delete clean.updated_at;
+  delete clean.offline_id;
+  delete clean.sync_status;
+  delete clean.operation;
+  delete clean.created_offline_at;
+  delete clean.updated_offline_at;
+  delete clean.line_items;
+  delete clean.sale_items;
+  delete clean.items_data;
+  delete clean.restore_stock_on_sync;
+  delete clean.restore_reason;
+  delete clean.partial_refund_items;
+  delete clean.refund_items;
+
+  Object.keys(clean).forEach((key) => {
+    if (clean[key] === undefined) delete clean[key];
+  });
+
+  return clean;
+}
+
 export function useSales() {
   return useApiTable<DbSale>("sales", salesApi as never);
 }

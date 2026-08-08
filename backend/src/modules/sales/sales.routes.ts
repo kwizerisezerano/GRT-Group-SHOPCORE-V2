@@ -66,10 +66,45 @@ const createSaleSchema = z.object({
   cashier: optionalText(191),
   receiptNo: optionalText(64),
   notes: optionalText(2000),
+  /*
+   * Idempotency key. The till picks one when a sale is first attempted and
+   * reuses it for every retry of that same sale, which is what lets a
+   * checkout be sent twice without recording two sales.
+   */
+  clientRequestId: optionalText(64),
+  /*
+   * A sale taken on a disconnected till and replayed once the connection came
+   * back. It is allowed to drive stock negative — see the checkout handler.
+   */
+  offline: z.boolean().default(false),
+  /*
+   * When the till completed the sale. For an offline sale this is earlier,
+   * sometimes by days, than when the server first heard about it, and it is
+   * the honest date for the receipt and for reporting.
+   */
+  completedAt: z.coerce.date().optional().nullable(),
 });
 
 /** Rounds to 2dp using integer arithmetic, avoiding float drift on money. */
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+/**
+ * Whether a write failed because another request already used this
+ * idempotency key.
+ *
+ * The index name is matched rather than a field list because MySQL reports a
+ * P2002 target as the name of the index that rejected the write, where
+ * PostgreSQL reports the columns. Being specific matters here: a duplicate
+ * invoice number is a different failure and must not be mistaken for a replay.
+ */
+function isDuplicateRequestId(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (error.code !== "P2002") return false;
+
+  const target = error.meta?.target;
+  const asText = Array.isArray(target) ? target.join("_") : String(target ?? "");
+  return asText.includes("client_request_id") || asText.includes("clientRequestId");
+}
 
 /**
  * Turns a stored sale into what the API is willing to say about it.
@@ -206,11 +241,44 @@ salesRouter.post(
       cashier: body.cashier,
       receiptNo: pick("receiptNo", "receipt_no"),
       notes: body.notes,
+      clientRequestId: pick("clientRequestId", "client_request_id"),
+      offline: pick("offline", "offline") ?? false,
+      completedAt: pick("completedAt", "completed_at"),
     });
 
     const tenantId = req.tenantId!;
 
-    const sale = await runInTransaction(async (tx) => {
+    /*
+     * Replay fast path.
+     *
+     * A till that lost its connection after this server committed, but before
+     * the answer arrived, cannot tell success from failure — so it retries.
+     * Answering with the sale already recorded is the honest reply: the work
+     * it asked for is done. 200 rather than 201, because nothing was created
+     * this time.
+     *
+     * This is only the fast path. It is a read before a write, so two replays
+     * arriving together can both miss it; the unique constraint below is what
+     * actually guarantees one sale. This check just avoids doing the whole
+     * transaction again in the overwhelmingly common case.
+     */
+    if (input.clientRequestId) {
+      const already = await req.tenantPrisma!.sale.findFirst({
+        where: { clientRequestId: input.clientRequestId },
+        include: { saleItems: true },
+      });
+
+      if (already) {
+        return sendSuccess(res, {
+          messageKey: "sales.alreadyRecorded",
+          data: toSnakeCase(serializeSale(already)),
+        });
+      }
+    }
+
+    let sale;
+    try {
+      sale = await runInTransaction(async (tx) => {
       /*
        * Prices come from the catalogue, not from the request. A client that
        * can name its own unit price can sell a television for one franc; the
@@ -285,6 +353,9 @@ salesRouter.post(
           tenantId,
           invoiceNo,
           receiptNo: input.receiptNo ?? null,
+          clientRequestId: input.clientRequestId ?? null,
+          source: input.offline ? "offline" : "online",
+          completedAt: input.completedAt ?? new Date(),
           customerName: input.customerName ?? null,
           customerPhoneEncrypted: encryptNullable(input.customerPhone),
           customerPhoneHash: phoneBlindIndexNullable(input.customerPhone),
@@ -328,11 +399,56 @@ salesRouter.post(
           referenceType: "sale",
           referenceId: created.id,
           userId: req.user!.id,
+          /*
+           * An offline sale already happened. The customer walked out with the
+           * goods on a till that could not ask this server anything, so by the
+           * time it replays, the only question is whether the books will admit
+           * it. Refusing the sale to protect a stock count would leave the shop
+           * with goods gone, no record of the money, and a number that is
+           * wrong anyway.
+           *
+           * So it is recorded, and stock is allowed to go negative. Negative
+           * stock is not corruption here — it is the shop being told that its
+           * count disagrees with what actually left the shelves, which is
+           * exactly the thing a stock take exists to resolve. An online sale
+           * gets no such licence: there the server is right there to say no
+           * before the goods move.
+           */
+          allowNegative: input.offline,
         });
       }
 
       return created;
-    });
+      });
+    } catch (error) {
+      /*
+       * Two replays of the same sale arrived close enough together that both
+       * passed the check above. One of them committed; this is the other, and
+       * the unique index stopped it — which is precisely what the index is
+       * for, and why the check above is an optimisation rather than the
+       * guarantee.
+       *
+       * The transaction rolled back whole, so there is no half-sale and no
+       * stock to put back. Answering with the sale that did commit gives the
+       * caller the same reply either way, which is the whole point of an
+       * idempotency key.
+       */
+      if (isDuplicateRequestId(error) && input.clientRequestId) {
+        const winner = await req.tenantPrisma!.sale.findFirst({
+          where: { clientRequestId: input.clientRequestId },
+          include: { saleItems: true },
+        });
+
+        if (winner) {
+          return sendSuccess(res, {
+            messageKey: "sales.alreadyRecorded",
+            data: toSnakeCase(serializeSale(winner)),
+          });
+        }
+      }
+
+      throw error;
+    }
 
     sendSuccess(res, {
       messageKey: "sales.created",

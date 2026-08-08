@@ -511,6 +511,20 @@ model Sale {
   invoiceNo     String   @map("invoice_no") @db.VarChar(64)
   saleNo        String?  @map("sale_no") @db.VarChar(64)
   receiptNo     String?  @map("receipt_no") @db.VarChar(64)
+  /// Idempotency key, chosen by the till when the sale is first attempted and
+  /// reused for every retry of that same sale. It is what makes a checkout
+  /// safe to send twice: the unique index below means a replay cannot create a
+  /// second sale, so a connection that drops after the server committed but
+  /// before the answer arrived costs nothing.
+  clientRequestId String? @map("client_request_id") @db.VarChar(64)
+  /// "online" for a sale recorded as it happened, "offline" for one taken on a
+  /// disconnected till and replayed later. Worth keeping: an offline sale is
+  /// allowed to drive stock negative, because the goods physically left the
+  /// shop whatever the database believed at the time.
+  source        String?  @default("online") @db.VarChar(16)
+  /// When the till actually completed the sale, which for an offline sale is
+  /// earlier — sometimes much earlier — than when the server first saw it.
+  completedAt   DateTime? @map("completed_at")
   customerName  String?  @map("customer_name") @db.VarChar(191)
   // A walk-in customer's phone and tax number are personal data just as much
   // as a registered customer's, so they get the same treatment as everywhere
@@ -562,6 +576,9 @@ model Sale {
   // be reconciled, so the database refuses it rather than trusting the
   // allocator to be right. Per tenant: two businesses may both have INV-0001.
   @@unique([tenantId, invoiceNo])
+  // The constraint that makes replay safe. Per tenant, so two businesses
+  // generating the same key never collide.
+  @@unique([tenantId, clientRequestId])
   @@map("sales")
 }
 

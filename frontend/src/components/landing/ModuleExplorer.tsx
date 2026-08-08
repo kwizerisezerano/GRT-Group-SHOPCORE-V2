@@ -425,7 +425,6 @@ export default function ModuleExplorer() {
                   label="Connected data"
                   value="Unified"
                   icon={Database}
-                  tone="cyan"
                   caption={`${activityFeed.length || 8} shared signals`}
                 />
 
@@ -433,7 +432,6 @@ export default function ModuleExplorer() {
                   label="Branch-ready"
                   value="Multi-site"
                   icon={Building2}
-                  tone="blue"
                   caption={branchName}
                 />
 
@@ -441,7 +439,6 @@ export default function ModuleExplorer() {
                   label="Activity"
                   value="Tracked"
                   icon={Activity}
-                  tone="emerald"
                   caption="Operational visibility"
                 />
               </div>

@@ -374,3 +374,75 @@ unconfigured `placeholder.invalid` host fails on every load of the till, so
 the POS believed it was offline and queued every sale locally while the
 backend was up and answering. Fixed, with a regression test in
 `frontend/src/lib/offlineStore.test.ts`.
+
+---
+
+## 14. How offline sales get back
+
+A till that works disconnected has one hard problem, and it is not storage.
+It is that **a request which times out is indistinguishable from a request
+that succeeded and lost its reply.** Retry and you risk a duplicate sale;
+don't retry and you risk losing one. For a record that is money and stock,
+neither is acceptable.
+
+ShopCore settles it with an idempotency key.
+
+```
+POST /api/sales  { ..., "client_request_id": "<uuid>" }
+```
+
+The till picks the key **once, when the sale is first attempted**, and reuses
+it for every retry of that same sale. Crucially it is chosen in `completeSale`
+*before* the online/offline decision, so a checkout that fails and gets queued
+offline carries the same key when it finally syncs.
+
+`sales.client_request_id` is unique per tenant, so:
+
+| Attempt | Server does | Answers |
+|---|---|---|
+| First | Records the sale | `201` + the sale |
+| Any retry | Nothing | `200` + *the same sale* |
+
+200 rather than 201 is the signal that nothing was created. The message is
+"This sale was already recorded. Returning the original receipt.", translated
+like every other.
+
+The read-before-write check in the handler is only a fast path. The guarantee
+is the unique index — the integration suite passes with the fast path disabled,
+which is how we know. That matters because the previous sync engine guarded
+duplicates by reading back an invoice number first, and check-then-act loses
+races: two replays can both read "not found" and both insert.
+
+### Offline sales may drive stock negative
+
+An offline sale already happened — the customer left with the goods on a till
+that could not ask the server anything. By the time it replays, refusing it to
+protect a stock count would leave the shop with goods gone, no record of the
+money, and a number that is wrong anyway. So `"offline": true` permits negative
+stock, and negative stock is the shop being told its count disagrees with what
+left the shelves. A stock take resolves that; silence does not.
+
+Online sales get no such licence: there the server is present to refuse before
+the goods move.
+
+### What sync does with a sale it cannot replay
+
+`syncOfflineData.ts` distinguishes two failures that look alike:
+
+- **Could not reach the server** — nothing is wrong with the sale. It stays
+  queued and the run stops, because the rest of the queue will hit the same
+  wall.
+- **The server answered and refused** — retrying will fail identically forever,
+  so the sale is quarantined with the server's own explanation rather than
+  spinning in a hot loop. Read them with `getQuarantinedOfflineRecords()`.
+
+Sales carrying a refund taken offline are quarantined too: there is no refunds
+endpoint yet, and syncing the sale while dropping its refund would overstate
+takings and understate stock.
+
+### Seeing it work
+
+`scripts/` has no canned demo for this, but the whole path is four curl calls —
+send a checkout with a `client_request_id`, then send it again. The second
+answers 200 with the first sale's id, and `SELECT COUNT(*) FROM sales WHERE
+client_request_id = '…'` stays at 1.

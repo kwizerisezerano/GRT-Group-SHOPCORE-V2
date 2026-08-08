@@ -338,6 +338,232 @@ describe("point of sale fields", () => {
   });
 });
 
+describe("offline sales and replay", () => {
+  /*
+   * The offline story only works if sending the same sale twice is safe. A
+   * till that loses its connection after the server committed, but before the
+   * answer arrived, cannot tell success from failure — so it retries, and the
+   * shop must not end up with two sales and twice the stock gone.
+   */
+
+  it("records a sale once, however many times it is sent", async () => {
+    const product = await makeProduct("Replay Item", 20, 1500);
+    const key = `req-${Date.now()}-once`;
+
+    const body = {
+      items: [{ product_id: product.id, quantity: 2 }],
+      client_request_id: key,
+    };
+
+    const first = await as(request(app).post("/api/sales")).send(body);
+    const second = await as(request(app).post("/api/sales")).send(body);
+    const third = await as(request(app).post("/api/sales")).send(body);
+
+    expect(first.status).toBe(201);
+    // 200, not 201: the retry created nothing.
+    expect(second.status).toBe(200);
+    expect(third.status).toBe(200);
+
+    // Same sale, same invoice number, every time.
+    expect(second.body.data.id).toBe(first.body.data.id);
+    expect(third.body.data.id).toBe(first.body.data.id);
+    expect(second.body.data.invoice_no).toBe(first.body.data.invoice_no);
+    expect(second.body.message).toBe(
+      "This sale was already recorded. Returning the original receipt."
+    );
+
+    expect(await prisma.sale.count({ where: { clientRequestId: key } })).toBe(1);
+
+    // And the stock came off exactly once.
+    const after = await prisma.product.findUnique({ where: { id: product.id } });
+    expect(after?.stockQuantity).toBe(18);
+  });
+
+  it("records one sale when replays arrive at the same instant", async () => {
+    /*
+     * The reason the unique constraint exists rather than just the read-before-
+     * write check. Both requests can pass that check; only one can hold the
+     * key. This is the case the old sync path — which read back an invoice
+     * number before inserting — could not survive.
+     */
+    const product = await makeProduct("Concurrent Replay", 50, 1000);
+    const key = `req-${Date.now()}-race`;
+
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        as(request(app).post("/api/sales")).send({
+          items: [{ product_id: product.id, quantity: 1 }],
+          client_request_id: key,
+        })
+      )
+    );
+
+    // Nobody gets an error; everybody gets the same sale.
+    expect(results.every((r) => r.status === 201 || r.status === 200)).toBe(true);
+    expect(results.filter((r) => r.status === 201)).toHaveLength(1);
+
+    const ids = new Set(results.map((r) => r.body.data.id));
+    expect(ids.size).toBe(1);
+
+    expect(await prisma.sale.count({ where: { clientRequestId: key } })).toBe(1);
+
+    // One unit sold, not six.
+    const after = await prisma.product.findUnique({ where: { id: product.id } });
+    expect(after?.stockQuantity).toBe(49);
+  });
+
+  it("treats different keys as different sales", async () => {
+    const product = await makeProduct("Distinct Keys", 20);
+
+    const a = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      client_request_id: `req-${Date.now()}-a`,
+    });
+    const b = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+      client_request_id: `req-${Date.now()}-b`,
+    });
+
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.data.id).not.toBe(b.body.data.id);
+  });
+
+  it("does not deduplicate sales that send no key", async () => {
+    // Two genuinely separate walk-in customers buying the same thing must not
+    // be collapsed into one sale just because the request bodies match.
+    const product = await makeProduct("No Key", 20);
+    const body = { items: [{ product_id: product.id, quantity: 1 }] };
+
+    const a = await as(request(app).post("/api/sales")).send(body);
+    const b = await as(request(app).post("/api/sales")).send(body);
+
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.data.id).not.toBe(b.body.data.id);
+  });
+
+  it("records an offline sale even when stock has since run out", async () => {
+    /*
+     * The goods left the shop while the till was disconnected. By the time it
+     * replays, the only question is whether the books will admit it — and
+     * refusing would leave the shop with the goods gone, no record of the
+     * money, and a stock number that is wrong either way.
+     */
+    const product = await makeProduct("Sold While Offline", 1, 3000);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 4 }],
+      offline: true,
+      client_request_id: `req-${Date.now()}-offline`,
+      completed_at: "2026-08-01T09:30:00.000Z",
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.source).toBe("offline");
+
+    // Negative stock is the shop being told its count disagrees with what
+    // actually left the shelves — a stock take resolves it, silence does not.
+    const after = await prisma.product.findUnique({ where: { id: product.id } });
+    expect(after?.stockQuantity).toBe(-3);
+
+    // The sale is dated when it happened, not when it synced.
+    expect(new Date(res.body.data.completed_at).toISOString()).toBe(
+      "2026-08-01T09:30:00.000Z"
+    );
+  });
+
+  it("still refuses an online sale that would oversell", async () => {
+    // The licence above is for offline replays only. Online, the server is
+    // right there to say no before the goods move.
+    const product = await makeProduct("Online Guard", 1);
+
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 4 }],
+      client_request_id: `req-${Date.now()}-online-guard`,
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("insufficient_stock");
+
+    // A refused sale must leave nothing behind — including its key, so the
+    // till can correct the basket and try again.
+    expect(await prisma.product.findUnique({ where: { id: product.id } })).toMatchObject({
+      stockQuantity: 1,
+    });
+  });
+
+  it("lets a refused sale be retried with the same key once it is valid", async () => {
+    const product = await makeProduct("Retry After Fix", 2, 800);
+    const key = `req-${Date.now()}-recover`;
+
+    const tooMany = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 5 }],
+      client_request_id: key,
+    });
+    expect(tooMany.status).toBe(409);
+
+    // Nothing was recorded, so the key is still free.
+    const corrected = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 2 }],
+      client_request_id: key,
+    });
+
+    expect(corrected.status).toBe(201);
+    expect(await prisma.sale.count({ where: { clientRequestId: key } })).toBe(1);
+  });
+
+  it("defaults a sale to online, completed now", async () => {
+    const product = await makeProduct("Default Source", 10);
+    const res = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: product.id, quantity: 1 }],
+    });
+
+    expect(res.body.data.source).toBe("online");
+    expect(res.body.data.completed_at).toBeTruthy();
+  });
+
+  it("keeps one tenant's key from colliding with another's", async () => {
+    // Keys are generated on the client, so two businesses can pick the same
+    // one. Scoping the constraint per tenant is what stops one shop's replay
+    // from returning another shop's sale.
+    const otherTenant = "eeeeeeee-7777-4777-8777-eeeeeeeeeeee";
+    const otherUser = "eeeeeeee-7777-4777-8777-ffffffffffff";
+    await prisma.tenant.upsert({
+      where: { id: otherTenant },
+      create: { id: otherTenant, name: "Other Shop" },
+      update: {},
+    });
+    const otherToken = signAccessToken({ sub: otherUser, tenantId: otherTenant, role: "owner" });
+
+    const mine = await makeProduct("Shared Key Mine", 10);
+    const theirs = await prisma.product.create({
+      data: { tenantId: otherTenant, name: "Shared Key Theirs", sellingPrice: 10, stockQuantity: 10, stock: 10 },
+    });
+
+    const key = `req-${Date.now()}-shared`;
+
+    const a = await as(request(app).post("/api/sales")).send({
+      items: [{ product_id: mine.id, quantity: 1 }],
+      client_request_id: key,
+    });
+    const b = await request(app)
+      .post("/api/sales")
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({ items: [{ product_id: theirs.id, quantity: 1 }], client_request_id: key });
+
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.data.id).not.toBe(b.body.data.id);
+
+    await prisma.saleItem.deleteMany({ where: { tenantId: otherTenant } });
+    await prisma.stockMovement.deleteMany({ where: { tenantId: otherTenant } });
+    await prisma.sale.deleteMany({ where: { tenantId: otherTenant } });
+    await prisma.product.deleteMany({ where: { tenantId: otherTenant } });
+    await prisma.tenant.delete({ where: { id: otherTenant } });
+  });
+});
+
 describe("stock safety", () => {
   it("refuses to sell more than is in stock", async () => {
     const product = await makeProduct("Scarce", 2);

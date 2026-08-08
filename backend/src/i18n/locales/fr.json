@@ -136,6 +136,7 @@
     "created": "Vente finalisée avec succès.",
     "notFound": "Cette vente est introuvable.",
     "unknownProduct": "Un ou plusieurs produits de cette vente sont introuvables.",
-    "insufficientStock": "Stock insuffisant pour {{product}} — {{available}} disponible(s), {{requested}} demandé(s)."
+    "insufficientStock": "Stock insuffisant pour {{product}} — {{available}} disponible(s), {{requested}} demandé(s).",
+    "alreadyRecorded": "Cette vente a déjà été enregistrée. Le reçu d'origine est renvoyé."
   }
 }
