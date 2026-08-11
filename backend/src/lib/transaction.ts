@@ -45,11 +45,42 @@ export async function runInTransaction<T>(
   work: (tx: TransactionClient) => Promise<T>,
   options: { timeoutMs?: number } = {}
 ): Promise<T> {
+  return runOn(prisma, work as (tx: unknown) => Promise<T>, options);
+}
+
+/**
+ * The same retry, on a tenant-scoped client (middleware/requireTenant.ts).
+ *
+ * Needed because the scoped client is a *different* client — extending Prisma
+ * produces a new object, so `runInTransaction`'s hard-coded `prisma` would run
+ * the work unscoped, which is the one mistake lib/tenantScope.ts exists to make
+ * impossible.
+ *
+ * Skipping the retry and calling `scoped.$transaction` directly is what the
+ * branches module did first, and the integration suite caught it: five
+ * concurrent writes taking the same locks produced a P2034 deadlock, and the
+ * victim surfaced to the caller as a 500 instead of quietly succeeding on the
+ * next attempt. Any scoped transaction that takes more than one lock wants
+ * this rather than the raw call.
+ */
+export async function runInScopedTransaction<Client extends { $transaction: any }, T>(
+  client: Client,
+  work: (tx: Client) => Promise<T>,
+  options: { timeoutMs?: number } = {}
+): Promise<T> {
+  return runOn(client, work as (tx: unknown) => Promise<T>, options);
+}
+
+async function runOn<T>(
+  client: { $transaction: any },
+  work: (tx: any) => Promise<T>,
+  options: { timeoutMs?: number }
+): Promise<T> {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await prisma.$transaction(work, {
+      return await client.$transaction(work, {
         timeout: options.timeoutMs ?? 15_000,
         // Repeatable read is MySQL's default and is what makes FOR UPDATE
         // meaningful here; stated explicitly so a server configured

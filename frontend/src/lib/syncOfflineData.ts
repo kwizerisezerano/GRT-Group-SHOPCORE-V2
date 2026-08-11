@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   authApi,
   brandsApi,
+  branchesApi,
   categoriesApi,
   createCrudApi,
   customersApi,
@@ -741,6 +742,7 @@ const API_BACKED_TABLES: Record<string, ReturnType<typeof createCrudApi<Record<s
   suppliers: suppliersApi,
   expenses: expensesApi,
   units: unitsApi,
+  branches: branchesApi,
 };
 
 /**

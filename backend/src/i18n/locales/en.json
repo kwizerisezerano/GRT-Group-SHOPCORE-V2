@@ -15,7 +15,8 @@
     "passwordResetCompleted": "Your password was updated successfully. Please sign in with your new password.",
     "invalidResetToken": "This password reset link is invalid or has expired. Please request a new one.",
     "noWorkspace": "You are not a member of this workspace.",
-    "missingPermission": "You do not have permission to do that. Required: {{permission}}."
+    "missingPermission": "You do not have permission to do that. Required: {{permission}}.",
+    "membershipSuspended": "Your access to this workspace is suspended. Ask an administrator to restore it."
   },
   "workspace": {
     "plansLoaded": "Subscription plans loaded successfully.",
@@ -178,6 +179,18 @@
     "inviteNotFound": "That invitation could not be found.",
     "inviteAlreadyPending": "An invitation is already pending for this address.",
     "alreadyMember": "That person is already a member of this workspace.",
-    "activityListed": "Activity loaded successfully."
+    "activityListed": "Activity loaded successfully.",
+    "memberProfileUpdated": "Member posting updated successfully.",
+    "cannotSuspendSelf": "You cannot suspend your own membership."
+  },
+  "branches": {
+    "listed": "Branches loaded successfully.",
+    "fetched": "Branch loaded successfully.",
+    "created": "Branch created successfully.",
+    "updated": "Branch updated successfully.",
+    "deleted": "Branch deleted successfully.",
+    "notFound": "That branch could not be found.",
+    "duplicate": "A branch with this name already exists.",
+    "defaultInUse": "This is the default branch. Make another branch the default before deleting it."
   }
 }

@@ -12,6 +12,7 @@ import { resolveRequestLanguage } from "./middleware/language";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/auth";
 import { authRouter } from "./modules/auth/auth.routes";
+import { branchesRouter } from "./modules/branches/branches.routes";
 import { catalogRouter } from "./modules/catalog/catalog.routes";
 import { crmRouter } from "./modules/crm/crm.routes";
 import { profileRouter } from "./modules/profile/profile.routes";
@@ -86,6 +87,7 @@ export function createApp() {
   app.use("/api/purchases", purchasesRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/units", unitsRouter);
+  app.use("/api/branches", branchesRouter);
   app.use("/api/stock-movements", stockMovementsRouter);
   app.use("/api/workspace", workspaceRouter);
 

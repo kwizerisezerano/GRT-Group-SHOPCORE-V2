@@ -15,7 +15,8 @@
     "passwordResetCompleted": "Ijambo ry'ibanga ryawe ryahinduwe neza. Injira ukoresheje irishya.",
     "invalidResetToken": "Iyi link yo guhindura ijambo ry'ibanga ntiyemewe cyangwa yarangiye. Saba indi.",
     "noWorkspace": "Ntabwo uri umunyamuryango w'iki kibanza cy'akazi.",
-    "missingPermission": "Ntufite uburenganzira bwo gukora ibyo. Bisabwa: {{permission}}."
+    "missingPermission": "Ntufite uburenganzira bwo gukora ibyo. Bisabwa: {{permission}}.",
+    "membershipSuspended": "Uburenganzira bwawe kuri uyu mwanya bwarahagaritswe. Saba umuyobozi kubugarura."
   },
   "workspace": {
     "plansLoaded": "Gahunda zo kwiyandikisha zapakiwe neza.",
@@ -178,6 +179,18 @@
     "inviteNotFound": "Ubwo butumire ntibwabonetse.",
     "inviteAlreadyPending": "Hari ubutumire bwategereje kuri iyi aderesi.",
     "alreadyMember": "Uwo muntu ari umunyamuryango w'iki kibanza cy'akazi.",
-    "activityListed": "Ibikorwa byatunganijwe neza."
+    "activityListed": "Ibikorwa byatunganijwe neza.",
+    "memberProfileUpdated": "Aho umunyamuryango akorera hahinduwe neza.",
+    "cannotSuspendSelf": "Ntushobora guhagarika ubunyamuryango bwawe."
+  },
+  "branches": {
+    "listed": "Amashami yatunganijwe neza.",
+    "fetched": "Ishami ryatunganijwe neza.",
+    "created": "Ishami ryaremwe neza.",
+    "updated": "Ishami ryahinduwe neza.",
+    "deleted": "Ishami ryasibwe neza.",
+    "notFound": "Iryo shami ntiryabonetse.",
+    "duplicate": "Hari ishami risanzwe rifite iri zina.",
+    "defaultInUse": "Iri ni ishami ry'ibanze. Shyiraho irindi shami nk'iry'ibanze mbere yo kurisiba."
   }
 }

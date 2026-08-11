@@ -15,7 +15,8 @@
     "passwordResetCompleted": "Votre mot de passe a été mis à jour avec succès. Veuillez vous connecter avec votre nouveau mot de passe.",
     "invalidResetToken": "Ce lien de réinitialisation est invalide ou a expiré. Veuillez en demander un nouveau.",
     "noWorkspace": "Vous n'êtes pas membre de cet espace de travail.",
-    "missingPermission": "Vous n'avez pas l'autorisation de faire cela. Requis : {{permission}}."
+    "missingPermission": "Vous n'avez pas l'autorisation de faire cela. Requis : {{permission}}.",
+    "membershipSuspended": "Votre accès à cet espace de travail est suspendu. Demandez à un administrateur de le rétablir."
   },
   "workspace": {
     "plansLoaded": "Formules d'abonnement chargées avec succès.",
@@ -178,6 +179,18 @@
     "inviteNotFound": "Cette invitation est introuvable.",
     "inviteAlreadyPending": "Une invitation est déjà en attente pour cette adresse.",
     "alreadyMember": "Cette personne est déjà membre de cet espace de travail.",
-    "activityListed": "Activité chargée avec succès."
+    "activityListed": "Activité chargée avec succès.",
+    "memberProfileUpdated": "Affectation du membre mise à jour avec succès.",
+    "cannotSuspendSelf": "Vous ne pouvez pas suspendre votre propre adhésion."
+  },
+  "branches": {
+    "listed": "Succursales chargées avec succès.",
+    "fetched": "Succursale chargée avec succès.",
+    "created": "Succursale créée avec succès.",
+    "updated": "Succursale mise à jour avec succès.",
+    "deleted": "Succursale supprimée avec succès.",
+    "notFound": "Cette succursale est introuvable.",
+    "duplicate": "Une succursale portant ce nom existe déjà.",
+    "defaultInUse": "Il s'agit de la succursale par défaut. Définissez une autre succursale par défaut avant de la supprimer."
   }
 }

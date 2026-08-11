@@ -162,6 +162,7 @@ model Tenant {
   expiredProducts  ExpiredProduct[]
   invoiceCounters  InvoiceCounter[]
   units            Unit[]
+  branches         Branch[]
   rolePermissions  RolePermission[]
   userInvites      UserInvite[]
   activityLogs     ActivityLog[]
@@ -191,8 +192,28 @@ model TenantMember {
   isDefault Boolean  @default(true) @map("is_default")
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Where this member works, and in what capacity.
+  ///
+  /// The admin screen has offered these for as long as it has existed and
+  /// nothing ever stored them: it wrote branch_id, department and status
+  /// straight to Supabase against columns this database never had, so every
+  /// save reported success and changed nothing.
+  ///
+  /// Null branch means the whole workspace rather than one shop — a roaming
+  /// manager, or a workspace that has not set any branches up yet. On the wire
+  /// the screen calls that "all".
+  branchId   String? @map("branch_id") @db.Char(36)
+  department String? @db.VarChar(191)
+  /// Whether the membership is live. Suspending is not removing: the person
+  /// keeps their history, their role and their audit trail, and stops being
+  /// able to sign in to this workspace.
+  status     String  @default("active") @db.VarChar(32)
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SetNull, not Cascade: closing a shop must not delete the people who
+  /// worked in it. They fall back to workspace-wide until reassigned.
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   // The source Postgres migration's own comments document a live bug where
   // an ON CONFLICT clause targeted a unique constraint that never existed on
@@ -485,6 +506,41 @@ model Brand {
 /// deliberate: a product's unit is a label on that product, and pointing it at
 /// a row that can be renamed or deleted underneath it buys nothing. This table
 /// is the tenant's own list to choose from, not a foreign key.
+/// A shop, outlet or site belonging to one workspace.
+///
+/// Contact details are personal data even when they belong to a place: a
+/// branch phone is usually a person's phone. Encrypted like every other, with
+/// no blind index because nothing looks a branch up by them.
+model Branch {
+  id              String    @id @default(uuid()) @db.Char(36)
+  tenantId        String    @map("tenant_id") @db.Char(36)
+  name            String    @db.VarChar(191)
+  code            String?   @db.VarChar(64)
+  manager         String?   @db.VarChar(191)
+  phoneEncrypted  String?   @map("phone_encrypted") @db.VarChar(512)
+  emailEncrypted  String?   @map("email_encrypted") @db.VarChar(512)
+  address         String?   @db.Text
+  city            String?   @db.VarChar(191)
+  type            String?   @db.VarChar(32)
+  status          String?   @default("active") @db.VarChar(32)
+  openingDate     DateTime? @map("opening_date")
+  operatingHours  String?   @map("operating_hours") @db.VarChar(191)
+  taxNumber       String?   @map("tax_number") @db.VarChar(64)
+  notes           String?   @db.Text
+  /// Exactly one per workspace, kept true by the module rather than by a
+  /// constraint: MySQL cannot express "at most one row where this is true".
+  isDefault       Boolean   @default(false) @map("is_default")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members TenantMember[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("branches")
+}
+
 model Unit {
   id           String   @id @default(uuid()) @db.Char(36)
   tenantId     String   @map("tenant_id") @db.Char(36)

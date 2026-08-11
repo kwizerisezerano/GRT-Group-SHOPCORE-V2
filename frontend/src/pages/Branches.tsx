@@ -42,8 +42,8 @@ import {
   CircleDollarSign,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { branchesApi, expensesApi, purchasesApi, salesApi } from "@/lib/apiClient";
 import UpgradeRequired from "@/components/UpgradeRequired";
 import { usePlanAccess } from "@/hooks/usePlanAccess";
 import { PageShell } from "@/components/PageShell";
@@ -385,33 +385,31 @@ export default function Branches() {
   const [isDefault, setIsDefault] = useState(false);
 
   const offlineModeActive = !isOnline() || isOfflineMode();
-  const canUseOnlineSupabase = isOnline() && !!session?.access_token && !isOfflineMode();
+  // Named for Supabase until this page stopped using it. The gate itself was
+  // always about having a live session and a working connection, not about
+  // which backend answered.
+  const canUseOnline = isOnline() && !!session?.access_token && !isOfflineMode();
 
   const { data: branches = [], isLoading } = useQuery({
-    queryKey: ["branches", tenantId, canUseOnlineSupabase ? "online" : "offline"],
+    queryKey: ["branches", tenantId, canUseOnline ? "online" : "offline"],
     enabled: !!user && !!tenantId,
     retry: 0,
-    refetchOnReconnect: canUseOnlineSupabase,
-    refetchOnWindowFocus: canUseOnlineSupabase,
+    refetchOnReconnect: canUseOnline,
+    refetchOnWindowFocus: canUseOnline,
     queryFn: async () => {
       if (!tenantId) return [] as Branch[];
       const cachedBranches = await getCachedTable("branches");
 
-      if (!canUseOnlineSupabase) {
+      if (!canUseOnline) {
         return dedupeBranches(Array.isArray(cachedBranches) ? cachedBranches : []);
       }
 
       try {
-        const { data, error } = await withTimeout<any>(
-          (supabase as any)
-            .from("branches")
-            .select("*")
-            .eq("tenant_id", tenantId)
-            .order("created_at", { ascending: false }),
+        const { data } = await withTimeout<any>(
+          branchesApi.list(),
           "Branch list request timed out"
         );
 
-        if (error) throw error;
         const merged = dedupeBranches([...(data || []), ...(Array.isArray(cachedBranches) ? cachedBranches : [])]);
         await saveCachedTable("branches", merged);
         return merged;
@@ -423,22 +421,15 @@ export default function Branches() {
   });
 
   const { data: sales = [] } = useQuery({
-    queryKey: ["branch-sales", tenantId, canUseOnlineSupabase ? "online" : "offline"],
+    queryKey: ["branch-sales", tenantId, canUseOnline ? "online" : "offline"],
     enabled: !!user && !!tenantId,
     retry: 0,
     queryFn: async () => {
       const cachedSales = await getCachedTable("sales");
-      if (!canUseOnlineSupabase) return Array.isArray(cachedSales) ? cachedSales : [];
+      if (!canUseOnline) return Array.isArray(cachedSales) ? cachedSales : [];
 
       try {
-        const { data, error } = await withTimeout<any>(
-          (supabase as any)
-            .from("sales")
-            .select("id, tenant_id, branch, total, subtotal, gross_profit, profit, net_profit, cost_total, status, created_at")
-            .eq("tenant_id", tenantId),
-          "Branch sales request timed out"
-        );
-        if (error) throw error;
+        const { data } = await withTimeout<any>(salesApi.list(), "Branch sales request timed out");
         await saveCachedTable("sales", Array.isArray(data) ? data : []);
         return data as Sale[];
       } catch (error: any) {
@@ -449,22 +440,18 @@ export default function Branches() {
   });
 
   const { data: expenses = [] } = useQuery({
-    queryKey: ["branch-expenses-lite", tenantId, canUseOnlineSupabase ? "online" : "offline"],
+    queryKey: ["branch-expenses-lite", tenantId, canUseOnline ? "online" : "offline"],
     enabled: !!user && !!tenantId,
     retry: 0,
     queryFn: async () => {
       const cachedExpenses = await getCachedTable("expenses");
-      if (!canUseOnlineSupabase) return Array.isArray(cachedExpenses) ? cachedExpenses : [];
+      if (!canUseOnline) return Array.isArray(cachedExpenses) ? cachedExpenses : [];
 
       try {
-        const { data, error } = await withTimeout<any>(
-          (supabase as any)
-            .from("expenses")
-            .select("id, tenant_id, branch, amount, status, created_at")
-            .eq("tenant_id", tenantId),
+        const { data } = await withTimeout<any>(
+          expensesApi.list(),
           "Branch expenses request timed out"
         );
-        if (error) throw error;
         await saveCachedTable("expenses", Array.isArray(data) ? data : []);
         return data || [];
       } catch {
@@ -474,22 +461,18 @@ export default function Branches() {
   });
 
   const { data: purchases = [] } = useQuery({
-    queryKey: ["branch-purchases-lite", tenantId, canUseOnlineSupabase ? "online" : "offline"],
+    queryKey: ["branch-purchases-lite", tenantId, canUseOnline ? "online" : "offline"],
     enabled: !!user && !!tenantId,
     retry: 0,
     queryFn: async () => {
       const cachedPurchases = await getCachedTable("purchases");
-      if (!canUseOnlineSupabase) return Array.isArray(cachedPurchases) ? cachedPurchases : [];
+      if (!canUseOnline) return Array.isArray(cachedPurchases) ? cachedPurchases : [];
 
       try {
-        const { data, error } = await withTimeout<any>(
-          (supabase as any)
-            .from("purchases")
-            .select("id, tenant_id, branch, total, status, created_at")
-            .eq("tenant_id", tenantId),
+        const { data } = await withTimeout<any>(
+          purchasesApi.list(),
           "Branch purchases request timed out"
         );
-        if (error) throw error;
         await saveCachedTable("purchases", Array.isArray(data) ? data : []);
         return data || [];
       } catch {
@@ -783,23 +766,21 @@ export default function Branches() {
       if (!name.trim()) throw new Error("Branch name is required");
       const payload = normalizePayload({ name, code, manager, phone, email, address, city, status, type, openingDate, operatingHours, taxNumber, notes, isDefault });
 
-      if (!canUseOnlineSupabase) {
+      if (!canUseOnline) {
         await saveBranchOffline(payload);
         return;
       }
 
-      if (isDefault) {
-        await withTimeout(
-          (supabase as any).from("branches").update({ is_default: false }).eq("tenant_id", tenantId),
-          "Default branch update timed out"
-        );
-      }
-
-      const { data, error } = await withTimeout<any>(
-        (supabase as any).from("branches").insert({ tenant_id: tenantId, ...payload }).select().single(),
+      /*
+       * No manual "clear the other defaults" pass any more. That was two
+       * writes with no atomicity — if the insert then failed its unique-name
+       * check, the workspace was left with no default at all. The server does
+       * both in one transaction now, so this sends one request.
+       */
+      const { data } = await withTimeout<any>(
+        branchesApi.create(payload as Record<string, unknown>),
         "Branch save request timed out"
       );
-      if (error) throw error;
 
       const cachedBranches = await getCachedTable("branches");
       await saveCachedTable("branches", dedupeBranches([data, ...(Array.isArray(cachedBranches) ? cachedBranches : [])]));
@@ -826,30 +807,15 @@ export default function Branches() {
       if (!name.trim()) throw new Error("Branch name is required");
       const payload = normalizePayload({ name, code, manager, phone, email, address, city, status, type, openingDate, operatingHours, taxNumber, notes, isDefault });
 
-      if (!canUseOnlineSupabase || String(editing.id || "").startsWith("offline-") || !!editing.offline_id) {
+      if (!canUseOnline || String(editing.id || "").startsWith("offline-") || !!editing.offline_id) {
         await saveBranchOffline(payload);
         return;
       }
 
-      if (isDefault) {
-        await withTimeout(
-          (supabase as any).from("branches").update({ is_default: false }).eq("tenant_id", tenantId),
-          "Default branch update timed out"
-        );
-      }
-
-      const { data, error } = await withTimeout<any>(
-        (supabase as any)
-          .from("branches")
-          .update(payload)
-          .eq("id", editing.id)
-          .eq("tenant_id", tenantId)
-          .select()
-          .single(),
+      const { data } = await withTimeout<any>(
+        branchesApi.update(String(editing.id), payload as Record<string, unknown>),
         "Branch update request timed out"
       );
-
-      if (error) throw error;
 
       const cachedBranches = await getCachedTable("branches");
       await saveCachedTable("branches", dedupeBranches([data, ...(Array.isArray(cachedBranches) ? cachedBranches : [])]));
@@ -874,7 +840,7 @@ export default function Branches() {
       if (!tenantId) throw new Error("No active workspace");
       const cachedBranches = await getCachedTable("branches");
 
-      if (!canUseOnlineSupabase || String(branch.id || "").startsWith("offline-")) {
+      if (!canUseOnline || String(branch.id || "").startsWith("offline-")) {
         if (String(branch.id || "").startsWith("offline-")) {
           await saveCachedTable("branches", (Array.isArray(cachedBranches) ? cachedBranches : []).filter((row: any) => String(row.id) !== String(branch.id)));
           return;
@@ -886,11 +852,12 @@ export default function Branches() {
         return;
       }
 
-      const { error } = await withTimeout<any>(
-        (supabase as any).from("branches").update({ status: "inactive", operation: null, sync_status: "synced", updated_offline_at: null }).eq("id", branch.id).eq("tenant_id", tenantId),
+      // Archived, not deleted: a branch with sales history behind it should
+      // stop being offered without taking that history's context with it.
+      await withTimeout<any>(
+        branchesApi.update(String(branch.id), { status: "inactive" }),
         "Branch delete request timed out"
       );
-      if (error) throw error;
       await saveCachedTable("branches", (Array.isArray(cachedBranches) ? cachedBranches : []).filter((row: any) => String(row.id) !== String(branch.id)));
     },
     onSuccess: async () => {

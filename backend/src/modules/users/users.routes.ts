@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma";
 import { sendSuccess } from "../../lib/apiResponse";
 import { asyncHandler } from "../../lib/asyncHandler";
-import { toSnakeCase } from "../../lib/caseMapping";
+import { toCamelCase, toSnakeCase } from "../../lib/caseMapping";
 import { decryptNullable, emailBlindIndex, encrypt, normalizeEmail } from "../../lib/crypto";
 import { HttpError } from "../../lib/httpError";
 import {
@@ -105,6 +105,9 @@ usersRouter.get(
             createdAt: true,
           },
         },
+        // Joined rather than fetched separately so the screen can label a
+        // posting without a second round trip per member.
+        branch: { select: { id: true, name: true } },
       },
     });
 
@@ -139,6 +142,10 @@ usersRouter.get(
         language: profile?.language ?? "en",
         role: member.role,
         permissions: resolvePermissions(member.role, overridesByRole.get(member.role) ?? []),
+        branchId: member.branchId,
+        branchName: member.branch?.name ?? null,
+        department: member.department,
+        status: member.status,
         joinedAt: member.createdAt,
       };
     });
@@ -207,6 +214,130 @@ usersRouter.patch(
     });
 
     sendSuccess(res, { messageKey: "users.roleAssigned", data: toSnakeCase(updated) });
+  })
+);
+
+/**
+ * Where a member works and whether their membership is live.
+ *
+ * Separate from the role endpoint because these are different decisions with
+ * different consequences: moving a cashier from one shop to another changes
+ * nothing about what they may do, while `users.assignRole` is the gate on that.
+ * Both are administrative, so both need `users.assignRole` to reach — but the
+ * rank rules below are the role endpoint's, deliberately, because suspending
+ * someone is a way of removing them and must not be a route around seniority.
+ *
+ * `branch_id: "all"` means workspace-wide; the screen's dropdown says "All
+ * branches" and this is what that sends.
+ */
+const memberProfileSchema = z
+  .object({
+    branchId: z.string().trim().nullable().optional(),
+    department: z.string().trim().max(191).nullable().optional(),
+    status: z.enum(["active", "suspended", "inactive"]).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: "Nothing to update" });
+
+usersRouter.patch(
+  "/members/:userId/profile",
+  requirePermission("users.assignRole"),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const targetUserId = req.params.userId;
+    const input = memberProfileSchema.parse(toCamelCase(req.body ?? {}));
+
+    const actor = await actorRole(req);
+    if (!actor) throw HttpError.forbidden("auth.noWorkspace", { code: "no_workspace" });
+
+    const target = await prisma.tenantMember.findFirst({
+      where: { tenantId, userId: targetUserId },
+    });
+    if (!target) throw HttpError.notFound("users.memberNotFound");
+
+    const isSelf = target.userId === req.user!.id;
+
+    /*
+     * Suspending yourself locks you out of your own workspace with no way back
+     * in. Refused for the same reason self-demotion and self-removal are.
+     *
+     * Checked before the rank rule, not after, so the message is the true
+     * reason: `outranks` is strictly greater, so you never outrank yourself,
+     * and the rank rule would otherwise answer every self-edit with "that
+     * person is senior to you" — which about yourself is nonsense.
+     */
+    if (isSelf && input.status && input.status !== "active") {
+      throw HttpError.forbidden("users.cannotSuspendSelf", { code: "cannot_suspend_self" });
+    }
+
+    /*
+     * Adjusting your own branch or department is allowed; it changes nothing
+     * about what you may do. Acting on anyone senior is not.
+     *
+     * Note what this already covers: nobody outranks an owner, so an owner
+     * cannot be suspended by anyone at all — which is a stronger guarantee
+     * than a last-owner count would give, and the reason there is no
+     * owner-count check here as there is on the role and removal endpoints.
+     */
+    if (!isSelf && !outranks(actor, target.role)) {
+      throw HttpError.forbidden("users.targetOutranksYou", {
+        code: "target_outranks_you",
+        params: { role: target.role },
+      });
+    }
+
+    const data: { branchId?: string | null; department?: string | null; status?: string } = {};
+
+    if (input.branchId !== undefined) {
+      const branchId = input.branchId === "all" || input.branchId === "" ? null : input.branchId;
+
+      // Checked rather than left to the foreign key: an unknown id should read
+      // as "no such branch", not as a database constraint error, and a branch
+      // belonging to another workspace must not be assignable at all.
+      if (branchId) {
+        const branch = await prisma.branch.findFirst({ where: { id: branchId, tenantId } });
+        if (!branch) throw HttpError.notFound("branches.notFound");
+      }
+
+      data.branchId = branchId;
+    }
+
+    if (input.department !== undefined) data.department = input.department || null;
+    if (input.status !== undefined) data.status = input.status;
+
+    const updated = await prisma.tenantMember.update({
+      where: { id: target.id },
+      include: { branch: { select: { id: true, name: true } } },
+      data,
+    });
+
+    await audit({
+      tenantId,
+      userId: req.user!.id,
+      action: "member_profile_updated",
+      targetId: targetUserId,
+      description: "Member posting updated",
+      metadata: {
+        from: {
+          branchId: target.branchId,
+          department: target.department,
+          status: target.status,
+        },
+        to: data,
+      },
+    });
+
+    sendSuccess(res, {
+      messageKey: "users.memberProfileUpdated",
+      data: toSnakeCase({
+        id: updated.id,
+        userId: updated.userId,
+        role: updated.role,
+        branchId: updated.branchId,
+        branchName: updated.branch?.name ?? null,
+        department: updated.department,
+        status: updated.status,
+      }),
+    });
   })
 );
 

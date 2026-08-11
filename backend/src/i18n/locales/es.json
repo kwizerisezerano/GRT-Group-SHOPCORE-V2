@@ -15,7 +15,8 @@
     "passwordResetCompleted": "Su contraseña se actualizó correctamente. Inicie sesión con su nueva contraseña.",
     "invalidResetToken": "Este enlace de restablecimiento no es válido o ha expirado. Solicite uno nuevo.",
     "noWorkspace": "No es miembro de este espacio de trabajo.",
-    "missingPermission": "No tiene permiso para hacer eso. Se requiere: {{permission}}."
+    "missingPermission": "No tiene permiso para hacer eso. Se requiere: {{permission}}.",
+    "membershipSuspended": "Tu acceso a este espacio de trabajo está suspendido. Pide a un administrador que lo restablezca."
   },
   "workspace": {
     "plansLoaded": "Planes de suscripción cargados correctamente.",
@@ -178,6 +179,18 @@
     "inviteNotFound": "No se encontró esa invitación.",
     "inviteAlreadyPending": "Ya hay una invitación pendiente para esta dirección.",
     "alreadyMember": "Esa persona ya es miembro de este espacio de trabajo.",
-    "activityListed": "Actividad cargada correctamente."
+    "activityListed": "Actividad cargada correctamente.",
+    "memberProfileUpdated": "Asignación del miembro actualizada correctamente.",
+    "cannotSuspendSelf": "No puedes suspender tu propia membresía."
+  },
+  "branches": {
+    "listed": "Sucursales cargadas correctamente.",
+    "fetched": "Sucursal cargada correctamente.",
+    "created": "Sucursal creada correctamente.",
+    "updated": "Sucursal actualizada correctamente.",
+    "deleted": "Sucursal eliminada correctamente.",
+    "notFound": "No se encontró esa sucursal.",
+    "duplicate": "Ya existe una sucursal con este nombre.",
+    "defaultInUse": "Esta es la sucursal predeterminada. Establece otra como predeterminada antes de eliminarla."
   }
 }

@@ -42,6 +42,7 @@ async function cleanup() {
   await prisma.invoiceCounter.deleteMany({ where: { tenantId: TENANT } });
   await prisma.product.deleteMany({ where: { tenantId: TENANT } });
   await prisma.tenantMember.deleteMany({ where: { tenantId: TENANT } });
+  await prisma.branch.deleteMany({ where: { tenantId: TENANT } });
   await prisma.tenant.deleteMany({ where: { id: TENANT } });
   await prisma.user.deleteMany({
     where: { id: { in: [OWNER, ADMIN, MANAGER, CASHIER, ACCOUNTANT, OUTSIDER] } },
@@ -66,6 +67,11 @@ beforeEach(async () => {
   await prisma.rolePermission.deleteMany({ where: { tenantId: TENANT } });
   await prisma.tenantMember.updateMany({ where: { tenantId: TENANT, userId: CASHIER }, data: { role: "cashier" } });
   await prisma.tenantMember.updateMany({ where: { tenantId: TENANT, userId: MANAGER }, data: { role: "manager" } });
+  await prisma.tenantMember.updateMany({
+    where: { tenantId: TENANT },
+    data: { branchId: null, department: null, status: "active" },
+  });
+  await prisma.branch.deleteMany({ where: { tenantId: TENANT } });
 });
 
 afterAll(async () => {
@@ -411,5 +417,175 @@ describe("telling the client what it may do", () => {
 
     const res = await as(CASHIER, request(app).get("/api/users/me/permissions"));
     expect(res.body.data.permissions).toContain("reports.viewProfit");
+  });
+});
+
+/**
+ * Where someone works, and whether their membership is live.
+ *
+ * All three of these fields were offered by the admin screen and stored by
+ * nothing: it wrote them to Supabase, against columns this database did not
+ * have. So these tests are as much about the write landing at all as they are
+ * about the rules around it.
+ */
+describe("member postings", () => {
+  const branchNamed = async (name: string) =>
+    prisma.branch.create({ data: { tenantId: TENANT, name } });
+
+  it("posts a member to a branch and shows it on the member list", async () => {
+    const branch = await branchNamed("Kicukiro");
+
+    const res = await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+      branch_id: branch.id,
+      department: "Front of house",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      branch_id: branch.id,
+      branch_name: "Kicukiro",
+      department: "Front of house",
+    });
+
+    const members = await as(OWNER, request(app).get("/api/users/members"));
+    const cashier = members.body.data.find((m: { user_id: string }) => m.user_id === CASHIER);
+    expect(cashier).toMatchObject({ branch_name: "Kicukiro", department: "Front of house" });
+
+    // And it is actually in the database, which is the part that never worked.
+    const stored = await prisma.tenantMember.findFirstOrThrow({
+      where: { tenantId: TENANT, userId: CASHIER },
+    });
+    expect(stored.branchId).toBe(branch.id);
+  });
+
+  it('treats "all" as workspace-wide rather than a branch id', async () => {
+    const branch = await branchNamed("Remera");
+    await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+      branch_id: branch.id,
+    });
+
+    const res = await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+      branch_id: "all",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.branch_id).toBeNull();
+  });
+
+  it("refuses a branch belonging to another workspace", async () => {
+    const otherTenant = "f0f0f0f0-1111-4111-8111-0000000000ff";
+    const otherUser = "f0f0f0f0-1111-4111-8111-0000000000fe";
+    await seedWorkspace({ tenantId: otherTenant, userId: otherUser, role: "owner" });
+    const foreign = await prisma.branch.create({
+      data: { tenantId: otherTenant, name: "Somebody Else's Shop" },
+    });
+
+    try {
+      const res = await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+        branch_id: foreign.id,
+      });
+
+      expect(res.status).toBe(404);
+      const stored = await prisma.tenantMember.findFirstOrThrow({
+        where: { tenantId: TENANT, userId: CASHIER },
+      });
+      expect(stored.branchId).toBeNull();
+    } finally {
+      await prisma.branch.deleteMany({ where: { tenantId: otherTenant } });
+      await prisma.tenantMember.deleteMany({ where: { tenantId: otherTenant } });
+      await prisma.tenant.deleteMany({ where: { id: otherTenant } });
+      await prisma.user.deleteMany({ where: { id: otherUser } });
+    }
+  });
+
+  it("will not let an admin post someone who outranks them", async () => {
+    const res = await as(ADMIN, request(app).patch(`/api/users/members/${OWNER}/profile`)).send({
+      department: "Nowhere",
+    });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("target_outranks_you");
+  });
+
+  it("lets you set your own branch and department, but not suspend yourself", async () => {
+    const branch = await branchNamed("Head Office");
+
+    const allowed = await as(ADMIN, request(app).patch(`/api/users/members/${ADMIN}/profile`)).send({
+      branch_id: branch.id,
+      department: "Operations",
+    });
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.data.department).toBe("Operations");
+
+    const refused = await as(ADMIN, request(app).patch(`/api/users/members/${ADMIN}/profile`)).send({
+      status: "suspended",
+    });
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.code).toBe("cannot_suspend_self");
+  });
+
+  /*
+   * An owner cannot be suspended by anyone, including another owner: `outranks`
+   * is strictly greater, and nothing ranks above owner. That is stronger than a
+   * last-owner count, and it is why this endpoint has no such count where the
+   * role and removal endpoints do.
+   */
+  it("never lets an owner be suspended, even by another owner", async () => {
+    const secondOwner = "f0f0f0f0-1111-4111-8111-00000000000a";
+    await member(secondOwner, "owner");
+
+    try {
+      const res = await as(secondOwner, request(app).patch(`/api/users/members/${OWNER}/profile`))
+        .send({ status: "suspended" });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("target_outranks_you");
+
+      const stored = await prisma.tenantMember.findFirstOrThrow({
+        where: { tenantId: TENANT, userId: OWNER },
+      });
+      expect(stored.status).toBe("active");
+    } finally {
+      await prisma.tenantMember.deleteMany({ where: { tenantId: TENANT, userId: secondOwner } });
+      await prisma.user.deleteMany({ where: { id: secondOwner } });
+    }
+  });
+
+  /*
+   * The half that matters. A status column nothing enforces is decoration —
+   * exactly the bug this whole endpoint exists to fix — so suspension is
+   * checked where every guarded request already passes, and it takes effect on
+   * the very next one rather than whenever a token happens to expire.
+   */
+  it("stops a suspended member acting, on the very next request", async () => {
+    const before = await as(CASHIER, request(app).get("/api/products"));
+    expect(before.status).toBe(200);
+
+    await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+      status: "suspended",
+    });
+
+    const after = await as(CASHIER, request(app).get("/api/products"));
+    expect(after.status).toBe(403);
+    expect(after.body.error.code).toBe("membership_suspended");
+
+    // Reinstating restores them just as immediately.
+    await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+      status: "active",
+    });
+    expect((await as(CASHIER, request(app).get("/api/products"))).status).toBe(200);
+  });
+
+  it("records the posting change in the activity log", async () => {
+    await as(OWNER, request(app).patch(`/api/users/members/${CASHIER}/profile`)).send({
+      department: "Stockroom",
+    });
+
+    const log = await prisma.activityLog.findFirst({
+      where: { tenantId: TENANT, action: "member_profile_updated", targetId: CASHIER },
+      orderBy: { createdAt: "desc" },
+    });
+
+    expect(log).not.toBeNull();
   });
 });

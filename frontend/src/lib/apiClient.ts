@@ -388,6 +388,7 @@ export const customersApi = createCrudApi<Record<string, unknown>>("customers");
 export const suppliersApi = createCrudApi<Record<string, unknown>>("suppliers");
 export const expensesApi = createCrudApi<Record<string, unknown>>("expenses");
 export const unitsApi = createCrudApi<Record<string, unknown>>("units");
+export const branchesApi = createCrudApi<Record<string, unknown>>("branches");
 
 /**
  * Sales are transactional, not CRUD: a checkout writes a header, its line
@@ -553,6 +554,23 @@ export const usersApi = {
   },
   async removeMember(userId: string) {
     return request(`/users/members/${userId}`, { method: "DELETE", auth: true });
+  },
+  /**
+   * Where a member works and whether their membership is live.
+   *
+   * Separate from assignRole because it is a separate decision: moving a
+   * cashier between shops changes nothing about what they may do. Pass
+   * `branch_id: "all"` for workspace-wide.
+   */
+  async updateMemberProfile(
+    userId: string,
+    input: { branch_id?: string | null; department?: string | null; status?: string }
+  ) {
+    return request(`/users/members/${userId}/profile`, {
+      method: "PATCH",
+      body: input,
+      auth: true,
+    });
   },
 
   /** The whole matrix — defaults, this workspace's overrides, and the result. */

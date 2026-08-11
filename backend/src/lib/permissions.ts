@@ -114,6 +114,13 @@ export const ALL_PERMISSIONS = [
   "users.remove",
   "users.managePermissions",
 
+  // Reading the branch list is not a settings privilege: a till has to know
+  // which shop it is standing in before it can sell anything, so every role
+  // gets the read. Deciding what shops exist is an administrative act, and
+  // that is the half kept back.
+  "branches.view",
+  "branches.manage",
+
   "settings.view",
   "settings.update",
   "settings.billing",
@@ -168,7 +175,15 @@ export const ROLE_RANK: Record<Role, number> = {
   owner: 8,
 };
 
-const VIEWER: Permission[] = ["dashboard.view", "products.view", "sales.view", "reports.view"];
+const VIEWER: Permission[] = [
+  "dashboard.view",
+  "products.view",
+  "sales.view",
+  "reports.view",
+  // Every other role list is built on this one, so this is how "everybody can
+  // see which branches exist" is expressed.
+  "branches.view",
+];
 
 const SALES_STAFF: Permission[] = [
   ...VIEWER,
@@ -247,6 +262,7 @@ const ADMIN: Permission[] = [
     "users.assignRole",
     "users.remove",
     "users.managePermissions",
+    "branches.manage",
     "settings.update",
   ]),
 ];

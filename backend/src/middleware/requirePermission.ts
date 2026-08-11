@@ -54,6 +54,14 @@ export function requirePermission(...required: Permission[]) {
       req.permissions = permissions.permissions;
       req.effectiveRole = permissions.role;
 
+      if (permissions.suspended) {
+        // Answered before the permission check so the message is the true
+        // reason. "You need products.view" sends a suspended cashier to ask
+        // for a permission they already have and still would not be able to
+        // use; "your access is suspended" sends them to the right person.
+        throw HttpError.forbidden("auth.membershipSuspended", { code: "membership_suspended" });
+      }
+
       const missing = required.filter((permission) => !permissions.set.has(permission));
 
       if (missing.length > 0) {
@@ -91,11 +99,29 @@ export function requirePermission(...required: Permission[]) {
 export async function loadPermissions(userId: string, tenantId: string) {
   const membership = await prisma.tenantMember.findFirst({
     where: { userId, tenantId },
-    select: { role: true },
+    select: { role: true, status: true },
   });
 
   if (!membership) {
     return { role: null as string | null, permissions: [] as Permission[], set: new Set<string>() };
+  }
+
+  /*
+   * A suspended member is read here, not in the route that suspends them.
+   *
+   * Suspension has to mean something on the very next request or it means
+   * nothing at all — and this is the one place every guarded request already
+   * passes through, so there is no endpoint that can be added later and forget
+   * to check. They keep their role and their history; what they lose is the
+   * ability to do anything with them.
+   */
+  if (membership.status !== "active") {
+    return {
+      role: membership.role,
+      permissions: [] as Permission[],
+      set: new Set<string>(),
+      suspended: true,
+    };
   }
 
   const overrides = await prisma.rolePermission.findMany({
@@ -105,5 +131,5 @@ export async function loadPermissions(userId: string, tenantId: string) {
 
   const permissions = resolvePermissions(membership.role, overrides);
 
-  return { role: membership.role, permissions, set: new Set<string>(permissions) };
+  return { role: membership.role, permissions, set: new Set<string>(permissions), suspended: false };
 }

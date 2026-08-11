@@ -74,8 +74,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
-import { lastSuccessMessage, usersApi } from "@/lib/apiClient";
+import { branchesApi, lastSuccessMessage, usersApi } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
@@ -487,14 +486,10 @@ export default function UserManagement() {
       if (!onlineReady) return ((await getCachedTable(cacheKey)) as Branch[]) || [];
 
       try {
-        const { data, error } = await (supabase as any)
-          .from("branches")
-          .select("id, name")
-          .eq("tenant_id", tenantId)
-          .order("name", { ascending: true });
-        if (error) throw error;
-        await saveCachedTable(cacheKey, data ?? []);
-        return data ?? [];
+        const { data } = await branchesApi.list();
+        const branches = (data ?? []) as unknown as Branch[];
+        await saveCachedTable(cacheKey, branches);
+        return branches;
       } catch (error: any) {
         if (isNetworkError(error)) return ((await getCachedTable(cacheKey)) as Branch[]) || [];
         throw error;
@@ -820,12 +815,14 @@ export default function UserManagement() {
       if (department !== undefined) updatePayload.department = department;
       if (status !== undefined) updatePayload.status = status;
 
-      const { error } = await (supabase as any)
-        .from("tenant_members")
-        .update(updatePayload)
-        .eq("tenant_id", tenantId)
-        .eq("user_id", userId);
-      if (error) throw error;
+      /*
+       * This used to write straight to Supabase, into `branch_id`, `department`
+       * and `status` columns that `tenant_members` never had here. Every save
+       * reported success and stored nothing. The server now owns the rules that
+       * go with it — you cannot post someone senior to you, and you cannot
+       * suspend yourself out of your own workspace.
+       */
+      await usersApi.updateMemberProfile(userId, updatePayload);
       return { userId, updatePayload };
     },
     onSuccess: async ({ userId, updatePayload }) => {

@@ -15,7 +15,8 @@
     "passwordResetCompleted": "Nenosiri lako limebadilishwa kwa mafanikio. Tafadhali ingia kwa nenosiri lako jipya.",
     "invalidResetToken": "Kiungo hiki cha kuweka upya si halali au kimeisha muda. Tafadhali omba kingine.",
     "noWorkspace": "Wewe si mwanachama wa eneo-kazi hili.",
-    "missingPermission": "Huna ruhusa ya kufanya hivyo. Inahitajika: {{permission}}."
+    "missingPermission": "Huna ruhusa ya kufanya hivyo. Inahitajika: {{permission}}.",
+    "membershipSuspended": "Ufikiaji wako wa nafasi hii ya kazi umesimamishwa. Muombe msimamizi aurejeshe."
   },
   "workspace": {
     "plansLoaded": "Mipango ya usajili imepakiwa kwa mafanikio.",
@@ -178,6 +179,18 @@
     "inviteNotFound": "Mwaliko huo haukupatikana.",
     "inviteAlreadyPending": "Tayari kuna mwaliko unaosubiri kwa anwani hii.",
     "alreadyMember": "Mtu huyo tayari ni mwanachama wa eneo-kazi hili.",
-    "activityListed": "Shughuli zimepakiwa kwa mafanikio."
+    "activityListed": "Shughuli zimepakiwa kwa mafanikio.",
+    "memberProfileUpdated": "Uwekaji wa mwanachama umesasishwa kikamilifu.",
+    "cannotSuspendSelf": "Huwezi kusimamisha uanachama wako mwenyewe."
+  },
+  "branches": {
+    "listed": "Matawi yamepakiwa kikamilifu.",
+    "fetched": "Tawi limepakiwa kikamilifu.",
+    "created": "Tawi limeundwa kikamilifu.",
+    "updated": "Tawi limesasishwa kikamilifu.",
+    "deleted": "Tawi limefutwa kikamilifu.",
+    "notFound": "Tawi hilo halikupatikana.",
+    "duplicate": "Tawi lenye jina hili tayari lipo.",
+    "defaultInUse": "Hili ndilo tawi kuu. Weka tawi lingine kuwa kuu kabla ya kulifuta."
   }
 }
