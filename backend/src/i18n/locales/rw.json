@@ -1,0 +1,196 @@
+{
+  "auth": {
+    "signupSuccess": "Konti yawe n'ahakorerwa hawe byaremwe neza.",
+    "emailExists": "Konti ikoresha iyi imeyili isanzweho.",
+    "phoneExists": "Konti ikoresha iyi nimero ya telefone isanzweho.",
+    "loginSuccess": "Winjiye neza.",
+    "invalidCredentials": "Imeyili cyangwa ijambo ry'ibanga si byo.",
+    "logoutSuccess": "Wasohotse neza.",
+    "tokenRefreshed": "Igihe cyo gukoresha cyavuguruwe neza.",
+    "invalidRefreshToken": "Igihe cyawe cyo gukoresha cyarangiye. Ongera winjire.",
+    "profileLoaded": "Amakuru ya konti yawe yapakiwe neza.",
+    "missingToken": "Ugomba kuba winjiye kugira ngo ukore iki gikorwa.",
+    "invalidToken": "Igihe cyawe cyo gukoresha ntikiremewe cyangwa cyarangiye. Ongera winjire.",
+    "passwordResetRequested": "Niba iyo imeyili yanditswe, link yo guhindura ijambo ry'ibanga yoherejwe kuri yo.",
+    "passwordResetCompleted": "Ijambo ry'ibanga ryawe ryahinduwe neza. Injira ukoresheje irishya.",
+    "invalidResetToken": "Iyi link yo guhindura ijambo ry'ibanga ntiyemewe cyangwa yarangiye. Saba indi.",
+    "noWorkspace": "Ntabwo uri umunyamuryango w'iki kibanza cy'akazi.",
+    "missingPermission": "Ntufite uburenganzira bwo gukora ibyo. Bisabwa: {{permission}}.",
+    "membershipSuspended": "Uburenganzira bwawe kuri uyu mwanya bwarahagaritswe. Saba umuyobozi kubugarura."
+  },
+  "workspace": {
+    "plansLoaded": "Gahunda zo kwiyandikisha zapakiwe neza.",
+    "paymentMethodsLoaded": "Uburyo bwo kwishyura bwapakiwe neza.",
+    "created": "Ahakorerwa hakozwe neza.",
+    "requiresTenant": "Iki gikorwa gisaba ahakorerwa hakora.",
+    "invalidPlan": "Gahunda yo kwiyandikisha wahisemo ntiyemewe cyangwa ntikiboneka.",
+    "invalidPrice": "Nta giciro gikora cyabonetse kuri gahunda n'igihe cyo kwishyura wahisemo.",
+    "invalidPaymentMethod": "Uburyo bwo kwishyura wahisemo ntibuzwi."
+  },
+  "common": {
+    "created": "Inyandiko yaremwe neza.",
+    "updated": "Inyandiko yavuguruwe neza.",
+    "deleted": "Inyandiko yasibwe neza.",
+    "loaded": "Inyandiko zapakiwe neza.",
+    "healthy": "Serivisi irakora neza."
+  },
+  "error": {
+    "validation": "Amwe mu makuru winjije ntiyemewe. Reba ibice byerekanwe.",
+    "notFound": "Inyandiko wasabye ntiyabonetse.",
+    "routeNotFound": "Nta nzira ibaho kuri {{method}} {{path}}.",
+    "unauthorized": "Ntufite uburenganzira bwo gukora iki gikorwa.",
+    "forbidden": "Ntufite uruhushya rwo gukora iki gikorwa.",
+    "conflict": "Iyi nyandiko isanzweho.",
+    "internal": "Hari ikitagenze neza ku ruhande rwacu. Ongera ugerageze."
+  },
+  "email": {
+    "common": {
+      "greeting": "Muraho {{name}},",
+      "linkFallback": "Niba buto idakora, koporora iyi link uyishyire muri mushakisha yawe:",
+      "footer": "Ubu ni ubutumwa bwikora buturutse kuri ShopCore. Ntugasubize.",
+      "ignore": "Niba atari wowe wabisabye, ushobora kwirengagiza ubu butumwa."
+    },
+    "accountCreated": {
+      "subject": "Murakaza neza kuri ShopCore",
+      "heading": "Ahakorerwa hawe hariteguye",
+      "body": "Konti yawe ya ShopCore n'ahakorerwa {{workspace}} byaremwe neza. Ushobora kwinjira ubu ugatangira gutunganya ubucuruzi bwawe.",
+      "cta": "Fungura ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Hindura ijambo ry'ibanga rya ShopCore",
+      "heading": "Hindura ijambo ry'ibanga",
+      "body": "Twakiriye ubusabe bwo guhindura ijambo ry'ibanga rya konti yawe ya ShopCore. Hitamo irindi ukoresheje buto iri hasi. Iyi link irangira mu isaha imwe.",
+      "cta": "Hindura ijambo ry'ibanga"
+    },
+    "passwordChanged": {
+      "subject": "Ijambo ry'ibanga rya ShopCore ryahinduwe",
+      "heading": "Ijambo ry'ibanga ryahinduwe",
+      "body": "Ijambo ry'ibanga rya konti yawe ya ShopCore ryahinduwe neza. Ibindi bikoresho byose byasohotse. Niba atari wowe, hindura ijambo ry'ibanga ako kanya uhamagare ubufasha.",
+      "cta": "Reba umutekano wa konti"
+    },
+    "subscriptionActivated": {
+      "subject": "Kwiyandikisha kwawe kuri ShopCore birakora",
+      "heading": "Kwiyandikisha byatangiye",
+      "body": "Kwiyandikisha kwawe kwa {{plan}} ubu birakora ku gihe cyo kwishyura cya {{cycle}} kuri {{workspace}}. Urakoze guhitamo ShopCore.",
+      "cta": "Reba kwishyura"
+    }
+  },
+  "catalog": {
+    "categoryListed": "Ibyiciro byapakiwe neza.",
+    "categoryFetched": "Icyiciro cyapakiwe neza.",
+    "categoryCreated": "Icyiciro cyaremwe neza.",
+    "categoryUpdated": "Icyiciro cyavuguruwe neza.",
+    "categoryDeleted": "Icyiciro cyasibwe neza.",
+    "categoryNotFound": "Icyo cyiciro ntikibonetse.",
+    "categoryDuplicate": "Icyiciro gifite iri zina gisanzweho.",
+    "categoryInUse": "Iki cyiciro ntigishobora gusibwa mu gihe hari ibicuruzwa bikiri muri cyo.",
+    "brandListed": "Amazina y'ibirango yapakiwe neza.",
+    "brandFetched": "Ikirango cyapakiwe neza.",
+    "brandCreated": "Ikirango cyaremwe neza.",
+    "brandUpdated": "Ikirango cyavuguruwe neza.",
+    "brandDeleted": "Ikirango cyasibwe neza.",
+    "brandNotFound": "Icyo kirango ntikibonetse.",
+    "brandDuplicate": "Ikirango gifite iri zina gisanzweho.",
+    "brandInUse": "Iki kirango ntigishobora gusibwa mu gihe hari ibicuruzwa bikiri muri cyo.",
+    "productListed": "Ibicuruzwa byapakiwe neza.",
+    "productFetched": "Igicuruzwa cyapakiwe neza.",
+    "productCreated": "Igicuruzwa cyaremwe neza.",
+    "productUpdated": "Igicuruzwa cyavuguruwe neza.",
+    "productDeleted": "Igicuruzwa cyasibwe neza.",
+    "productNotFound": "Icyo gicuruzwa ntikibonetse.",
+    "productDuplicate": "Igicuruzwa gifite iyi SKU cyangwa iyi barcode gisanzweho.",
+    "invalidCategory": "Icyiciro wahisemo ntikibaho.",
+    "invalidBrand": "Ikirango wahisemo ntikibaho.",
+    "priceBelowCost": "Igiciro cyo kugurisha ntigishobora kuba munsi y'igiciro cy'ikiguzi."
+  },
+  "crm": {
+    "customerListed": "Abakiriya bapakiwe neza.",
+    "customerFetched": "Umukiriya yapakiwe neza.",
+    "customerCreated": "Umukiriya yaremwe neza.",
+    "customerUpdated": "Umukiriya yavuguruwe neza.",
+    "customerDeleted": "Umukiriya yasibwe neza.",
+    "customerNotFound": "Uwo mukiriya ntiyabonetse.",
+    "customerDuplicate": "Umukiriya ufite iyi imeyili cyangwa iyi nimero asanzweho.",
+    "supplierListed": "Abatanga ibicuruzwa bapakiwe neza.",
+    "supplierFetched": "Utanga ibicuruzwa yapakiwe neza.",
+    "supplierCreated": "Utanga ibicuruzwa yaremwe neza.",
+    "supplierUpdated": "Utanga ibicuruzwa yavuguruwe neza.",
+    "supplierDeleted": "Utanga ibicuruzwa yasibwe neza.",
+    "supplierNotFound": "Uwo utanga ibicuruzwa ntiyabonetse.",
+    "supplierDuplicate": "Utanga ibicuruzwa ufite iyi imeyili cyangwa iyi nimero asanzweho.",
+    "supplierInUse": "Uyu utanga ibicuruzwa ntashobora gusibwa mu gihe hari amaguriro afitanye na we.",
+    "expenseListed": "Amafaranga yakoreshejwe yapakiwe neza.",
+    "expenseFetched": "Ikoreshwa ryapakiwe neza.",
+    "expenseCreated": "Ikoreshwa ryanditswe neza.",
+    "expenseUpdated": "Ikoreshwa ryavuguruwe neza.",
+    "expenseDeleted": "Ikoreshwa ryasibwe neza.",
+    "expenseNotFound": "Iryo koreshwa ntiryabonetse.",
+    "expenseDuplicate": "Iri koreshwa ryamaze kwandikwa."
+  },
+  "profile": {
+    "loaded": "Umwirondoro wapakiwe neza.",
+    "updated": "Umwirondoro wawe wavuguruwe neza.",
+    "notFound": "Umwirondoro wawe ntiwabonetse.",
+    "phoneTaken": "Iyo nimero ya telefone isanzwe ikoreshwa na konti indi."
+  },
+  "sales": {
+    "listed": "Ibyagurishijwe byapakiwe neza.",
+    "fetched": "Icyagurishijwe cyapakiwe neza.",
+    "created": "Kugurisha byarangiye neza.",
+    "notFound": "Icyo cyagurishijwe ntikibonetse.",
+    "unknownProduct": "Igicuruzwa kimwe cyangwa byinshi muri iri gurisha ntibyabonetse.",
+    "insufficientStock": "Nta bicuruzwa bihagije bya {{product}} — hari {{available}}, wasabye {{requested}}.",
+    "alreadyRecorded": "Iri gurisha ryari ryanditswe. Turasubiza inyemezabuguzi y'umwimerere."
+  },
+  "purchases": {
+    "listed": "Ibiguzwe byatunganijwe neza.",
+    "fetched": "Icyaguzwe cyatunganijwe neza.",
+    "created": "Kwakira ibicuruzwa byanditswe neza.",
+    "notFound": "Icyo cyaguzwe nticyabonetse.",
+    "unknownProduct": "Ibicuruzwa bimwe muri iki cyaguzwe ntibyabonetse.",
+    "unknownSupplier": "Uwo mucuruzi ntiyabonetse.",
+    "alreadyRecorded": "Iki cyaguzwe cyari cyanditswe. Turasubiza inyemezabuguzi y'umwimerere."
+  },
+  "inventory": {
+    "unitListed": "Ibipimo byatunganijwe neza.",
+    "unitFetched": "Igipimo cyatunganijwe neza.",
+    "unitCreated": "Igipimo cyaremwe neza.",
+    "unitUpdated": "Igipimo cyavuguruwe neza.",
+    "unitDeleted": "Igipimo cyasibwe neza.",
+    "unitNotFound": "Icyo gipimo nticyabonetse.",
+    "unitDuplicate": "Igipimo gifite iri zina kirahari.",
+    "movementListed": "Ingendo z'ububiko zatunganijwe neza."
+  },
+  "users": {
+    "membersListed": "Abanyamuryango b'ikibanza cy'akazi batunganijwe neza.",
+    "memberNotFound": "Uwo munyamuryango ntiyabonetse.",
+    "roleAssigned": "Uruhare rwavuguruwe neza.",
+    "memberRemoved": "Umunyamuryango yakuwe mu kibanza cy'akazi.",
+    "cannotChangeOwnRole": "Ntushobora guhindura uruhare rwawe bwite.",
+    "cannotRemoveSelf": "Ntushobora kwikura mu kibanza cy'akazi.",
+    "targetOutranksYou": "Ntushobora gukorera {{role}} — arengeje urwego rwawe.",
+    "roleAboveYours": "Ntushobora gutanga uruhare rwa {{role}} — runganya cyangwa rurenga urwawe.",
+    "lastOwner": "Ikibanza cy'akazi kigomba kugumana nibura nyirayo umwe.",
+    "permissionsListed": "Uburenganzira bwatunganijwe neza.",
+    "permissionsUpdated": "Uburenganzira bwavuguruwe neza.",
+    "invitesListed": "Ubutumire bwatunganijwe neza.",
+    "inviteCreated": "Ubutumire bwaremwe neza.",
+    "inviteCancelled": "Ubutumire bwahagaritswe.",
+    "inviteNotFound": "Ubwo butumire ntibwabonetse.",
+    "inviteAlreadyPending": "Hari ubutumire bwategereje kuri iyi aderesi.",
+    "alreadyMember": "Uwo muntu ari umunyamuryango w'iki kibanza cy'akazi.",
+    "activityListed": "Ibikorwa byatunganijwe neza.",
+    "memberProfileUpdated": "Aho umunyamuryango akorera hahinduwe neza.",
+    "cannotSuspendSelf": "Ntushobora guhagarika ubunyamuryango bwawe."
+  },
+  "branches": {
+    "listed": "Amashami yatunganijwe neza.",
+    "fetched": "Ishami ryatunganijwe neza.",
+    "created": "Ishami ryaremwe neza.",
+    "updated": "Ishami ryahinduwe neza.",
+    "deleted": "Ishami ryasibwe neza.",
+    "notFound": "Iryo shami ntiryabonetse.",
+    "duplicate": "Hari ishami risanzwe rifite iri zina.",
+    "defaultInUse": "Iri ni ishami ry'ibanze. Shyiraho irindi shami nk'iry'ibanze mbere yo kurisiba."
+  }
+}

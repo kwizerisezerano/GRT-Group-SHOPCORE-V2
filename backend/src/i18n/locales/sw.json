@@ -1,0 +1,196 @@
+{
+  "auth": {
+    "signupSuccess": "Akaunti yako na eneo lako la kazi vimeundwa kwa mafanikio.",
+    "emailExists": "Akaunti yenye barua pepe hii tayari ipo.",
+    "phoneExists": "Akaunti yenye nambari hii ya simu tayari ipo.",
+    "loginSuccess": "Umeingia kwa mafanikio.",
+    "invalidCredentials": "Barua pepe au nenosiri si sahihi.",
+    "logoutSuccess": "Umetoka kwa mafanikio.",
+    "tokenRefreshed": "Kipindi kimehuishwa kwa mafanikio.",
+    "invalidRefreshToken": "Kipindi chako kimeisha muda. Tafadhali ingia tena.",
+    "profileLoaded": "Maelezo ya akaunti yamepakiwa kwa mafanikio.",
+    "missingToken": "Lazima uwe umeingia ili kufanya kitendo hiki.",
+    "invalidToken": "Kipindi chako si halali au kimeisha muda. Tafadhali ingia tena.",
+    "passwordResetRequested": "Ikiwa barua pepe hiyo imesajiliwa, kiungo cha kuweka upya kimetumwa kwake.",
+    "passwordResetCompleted": "Nenosiri lako limebadilishwa kwa mafanikio. Tafadhali ingia kwa nenosiri lako jipya.",
+    "invalidResetToken": "Kiungo hiki cha kuweka upya si halali au kimeisha muda. Tafadhali omba kingine.",
+    "noWorkspace": "Wewe si mwanachama wa eneo-kazi hili.",
+    "missingPermission": "Huna ruhusa ya kufanya hivyo. Inahitajika: {{permission}}.",
+    "membershipSuspended": "Ufikiaji wako wa nafasi hii ya kazi umesimamishwa. Muombe msimamizi aurejeshe."
+  },
+  "workspace": {
+    "plansLoaded": "Mipango ya usajili imepakiwa kwa mafanikio.",
+    "paymentMethodsLoaded": "Njia za malipo zimepakiwa kwa mafanikio.",
+    "created": "Eneo la kazi limeundwa kwa mafanikio.",
+    "requiresTenant": "Kitendo hiki kinahitaji eneo la kazi linalofanya kazi.",
+    "invalidPlan": "Mpango wa usajili uliochaguliwa si halali au haupatikani tena.",
+    "invalidPrice": "Hakuna bei inayotumika iliyopatikana kwa mpango na mzunguko wa malipo uliochaguliwa.",
+    "invalidPaymentMethod": "Njia ya malipo uliyochagua haitambuliki."
+  },
+  "common": {
+    "created": "Rekodi imeundwa kwa mafanikio.",
+    "updated": "Rekodi imesasishwa kwa mafanikio.",
+    "deleted": "Rekodi imefutwa kwa mafanikio.",
+    "loaded": "Rekodi zimepakiwa kwa mafanikio.",
+    "healthy": "Huduma inafanya kazi kawaida."
+  },
+  "error": {
+    "validation": "Baadhi ya taarifa ulizoweka si sahihi. Tafadhali angalia sehemu zilizoonyeshwa.",
+    "notFound": "Rekodi uliyoomba haikupatikana.",
+    "routeNotFound": "Hakuna njia iliyopo kwa {{method}} {{path}}.",
+    "unauthorized": "Huna idhini ya kufanya kitendo hiki.",
+    "forbidden": "Huna ruhusa ya kufanya kitendo hiki.",
+    "conflict": "Rekodi hii tayari ipo.",
+    "internal": "Hitilafu imetokea kwa upande wetu. Tafadhali jaribu tena."
+  },
+  "email": {
+    "common": {
+      "greeting": "Habari {{name}},",
+      "linkFallback": "Ikiwa kitufe hakifanyi kazi, nakili kiungo hiki kwenye kivinjari chako:",
+      "footer": "Huu ni ujumbe wa kiotomatiki kutoka ShopCore. Tafadhali usijibu.",
+      "ignore": "Ikiwa hukuomba hili, unaweza kupuuza barua pepe hii."
+    },
+    "accountCreated": {
+      "subject": "Karibu ShopCore",
+      "heading": "Eneo lako la kazi liko tayari",
+      "body": "Akaunti yako ya ShopCore na eneo la kazi {{workspace}} vimeundwa kwa mafanikio. Unaweza kuingia sasa na kuanza kusanidi biashara yako.",
+      "cta": "Fungua ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Weka upya nenosiri lako la ShopCore",
+      "heading": "Weka upya nenosiri lako",
+      "body": "Tumepokea ombi la kuweka upya nenosiri la akaunti yako ya ShopCore. Chagua jipya kwa kutumia kitufe hapa chini. Kiungo hiki kitaisha muda baada ya saa moja.",
+      "cta": "Weka upya nenosiri"
+    },
+    "passwordChanged": {
+      "subject": "Nenosiri lako la ShopCore limebadilishwa",
+      "heading": "Nenosiri limebadilishwa",
+      "body": "Nenosiri la akaunti yako ya ShopCore limebadilishwa kwa mafanikio. Vifaa vingine vyote vimetolewa kwenye akaunti. Ikiwa haukuwa wewe, weka upya nenosiri lako mara moja na wasiliana na huduma kwa wateja.",
+      "cta": "Kagua usalama wa akaunti"
+    },
+    "subscriptionActivated": {
+      "subject": "Usajili wako wa ShopCore unafanya kazi",
+      "heading": "Usajili umeanzishwa",
+      "body": "Usajili wako wa {{plan}} sasa unafanya kazi kwa mzunguko wa malipo wa {{cycle}} kwa eneo la kazi {{workspace}}. Asante kwa kuchagua ShopCore.",
+      "cta": "Angalia malipo"
+    }
+  },
+  "catalog": {
+    "categoryListed": "Kategoria zimepakiwa kwa mafanikio.",
+    "categoryFetched": "Kategoria imepakiwa kwa mafanikio.",
+    "categoryCreated": "Kategoria imeundwa kwa mafanikio.",
+    "categoryUpdated": "Kategoria imesasishwa kwa mafanikio.",
+    "categoryDeleted": "Kategoria imefutwa kwa mafanikio.",
+    "categoryNotFound": "Kategoria hiyo haikupatikana.",
+    "categoryDuplicate": "Kategoria yenye jina hili tayari ipo.",
+    "categoryInUse": "Kategoria hii haiwezi kufutwa wakati bidhaa bado zimeunganishwa nayo.",
+    "brandListed": "Chapa zimepakiwa kwa mafanikio.",
+    "brandFetched": "Chapa imepakiwa kwa mafanikio.",
+    "brandCreated": "Chapa imeundwa kwa mafanikio.",
+    "brandUpdated": "Chapa imesasishwa kwa mafanikio.",
+    "brandDeleted": "Chapa imefutwa kwa mafanikio.",
+    "brandNotFound": "Chapa hiyo haikupatikana.",
+    "brandDuplicate": "Chapa yenye jina hili tayari ipo.",
+    "brandInUse": "Chapa hii haiwezi kufutwa wakati bidhaa bado zimeunganishwa nayo.",
+    "productListed": "Bidhaa zimepakiwa kwa mafanikio.",
+    "productFetched": "Bidhaa imepakiwa kwa mafanikio.",
+    "productCreated": "Bidhaa imeundwa kwa mafanikio.",
+    "productUpdated": "Bidhaa imesasishwa kwa mafanikio.",
+    "productDeleted": "Bidhaa imefutwa kwa mafanikio.",
+    "productNotFound": "Bidhaa hiyo haikupatikana.",
+    "productDuplicate": "Bidhaa yenye SKU au msimbopau huu tayari ipo.",
+    "invalidCategory": "Kategoria uliyochagua haipo.",
+    "invalidBrand": "Chapa uliyochagua haipo.",
+    "priceBelowCost": "Bei ya kuuza haiwezi kuwa chini ya bei ya gharama."
+  },
+  "crm": {
+    "customerListed": "Wateja wamepakiwa kwa mafanikio.",
+    "customerFetched": "Mteja amepakiwa kwa mafanikio.",
+    "customerCreated": "Mteja ameundwa kwa mafanikio.",
+    "customerUpdated": "Mteja amesasishwa kwa mafanikio.",
+    "customerDeleted": "Mteja amefutwa kwa mafanikio.",
+    "customerNotFound": "Mteja huyo hakupatikana.",
+    "customerDuplicate": "Mteja mwenye barua pepe au nambari hii ya simu tayari yupo.",
+    "supplierListed": "Wasambazaji wamepakiwa kwa mafanikio.",
+    "supplierFetched": "Msambazaji amepakiwa kwa mafanikio.",
+    "supplierCreated": "Msambazaji ameundwa kwa mafanikio.",
+    "supplierUpdated": "Msambazaji amesasishwa kwa mafanikio.",
+    "supplierDeleted": "Msambazaji amefutwa kwa mafanikio.",
+    "supplierNotFound": "Msambazaji huyo hakupatikana.",
+    "supplierDuplicate": "Msambazaji mwenye barua pepe au nambari hii ya simu tayari yupo.",
+    "supplierInUse": "Msambazaji huyu hawezi kufutwa wakati manunuzi bado yamerekodiwa kwake.",
+    "expenseListed": "Matumizi yamepakiwa kwa mafanikio.",
+    "expenseFetched": "Matumizi yamepakiwa kwa mafanikio.",
+    "expenseCreated": "Matumizi yamerekodiwa kwa mafanikio.",
+    "expenseUpdated": "Matumizi yamesasishwa kwa mafanikio.",
+    "expenseDeleted": "Matumizi yamefutwa kwa mafanikio.",
+    "expenseNotFound": "Matumizi hayo hayakupatikana.",
+    "expenseDuplicate": "Matumizi haya tayari yamerekodiwa."
+  },
+  "profile": {
+    "loaded": "Wasifu umepakiwa kwa mafanikio.",
+    "updated": "Wasifu wako umesasishwa kwa mafanikio.",
+    "notFound": "Wasifu wako haukupatikana.",
+    "phoneTaken": "Nambari hiyo ya simu tayari inatumiwa na akaunti nyingine."
+  },
+  "sales": {
+    "listed": "Mauzo yamepakiwa kwa mafanikio.",
+    "fetched": "Mauzo yamepakiwa kwa mafanikio.",
+    "created": "Mauzo yamekamilika kwa mafanikio.",
+    "notFound": "Mauzo hayo hayakupatikana.",
+    "unknownProduct": "Bidhaa moja au zaidi katika mauzo haya hazikupatikana.",
+    "insufficientStock": "Hakuna hisa ya kutosha ya {{product}} — {{available}} zinapatikana, {{requested}} zimeombwa.",
+    "alreadyRecorded": "Mauzo haya tayari yamesajiliwa. Tunarejesha risiti asili."
+  },
+  "purchases": {
+    "listed": "Manunuzi yamepakiwa kwa mafanikio.",
+    "fetched": "Ununuzi umepakiwa kwa mafanikio.",
+    "created": "Upokeaji wa bidhaa umesajiliwa kwa mafanikio.",
+    "notFound": "Ununuzi huo haukupatikana.",
+    "unknownProduct": "Bidhaa moja au zaidi katika ununuzi huu hazikupatikana.",
+    "unknownSupplier": "Msambazaji huyo hakupatikana.",
+    "alreadyRecorded": "Ununuzi huu tayari umesajiliwa. Tunarejesha risiti asili."
+  },
+  "inventory": {
+    "unitListed": "Vipimo vimepakiwa kwa mafanikio.",
+    "unitFetched": "Kipimo kimepakiwa kwa mafanikio.",
+    "unitCreated": "Kipimo kimeundwa kwa mafanikio.",
+    "unitUpdated": "Kipimo kimesasishwa kwa mafanikio.",
+    "unitDeleted": "Kipimo kimefutwa kwa mafanikio.",
+    "unitNotFound": "Kipimo hicho hakikupatikana.",
+    "unitDuplicate": "Kipimo chenye jina hili tayari kipo.",
+    "movementListed": "Mienendo ya hisa imepakiwa kwa mafanikio."
+  },
+  "users": {
+    "membersListed": "Wanachama wa eneo-kazi wamepakiwa kwa mafanikio.",
+    "memberNotFound": "Mwanachama huyo hakupatikana.",
+    "roleAssigned": "Jukumu limesasishwa kwa mafanikio.",
+    "memberRemoved": "Mwanachama ameondolewa kwenye eneo-kazi.",
+    "cannotChangeOwnRole": "Huwezi kubadilisha jukumu lako mwenyewe.",
+    "cannotRemoveSelf": "Huwezi kujiondoa mwenyewe kwenye eneo-kazi.",
+    "targetOutranksYou": "Huwezi kumtendea {{role}} — yuko juu yako kicheo.",
+    "roleAboveYours": "Huwezi kutoa jukumu la {{role}} — liko sawa au juu ya lako.",
+    "lastOwner": "Eneo-kazi lazima libaki na angalau mmiliki mmoja.",
+    "permissionsListed": "Ruhusa zimepakiwa kwa mafanikio.",
+    "permissionsUpdated": "Ruhusa zimesasishwa kwa mafanikio.",
+    "invitesListed": "Mialiko imepakiwa kwa mafanikio.",
+    "inviteCreated": "Mwaliko umeundwa kwa mafanikio.",
+    "inviteCancelled": "Mwaliko umeghairiwa.",
+    "inviteNotFound": "Mwaliko huo haukupatikana.",
+    "inviteAlreadyPending": "Tayari kuna mwaliko unaosubiri kwa anwani hii.",
+    "alreadyMember": "Mtu huyo tayari ni mwanachama wa eneo-kazi hili.",
+    "activityListed": "Shughuli zimepakiwa kwa mafanikio.",
+    "memberProfileUpdated": "Uwekaji wa mwanachama umesasishwa kikamilifu.",
+    "cannotSuspendSelf": "Huwezi kusimamisha uanachama wako mwenyewe."
+  },
+  "branches": {
+    "listed": "Matawi yamepakiwa kikamilifu.",
+    "fetched": "Tawi limepakiwa kikamilifu.",
+    "created": "Tawi limeundwa kikamilifu.",
+    "updated": "Tawi limesasishwa kikamilifu.",
+    "deleted": "Tawi limefutwa kikamilifu.",
+    "notFound": "Tawi hilo halikupatikana.",
+    "duplicate": "Tawi lenye jina hili tayari lipo.",
+    "defaultInUse": "Hili ndilo tawi kuu. Weka tawi lingine kuwa kuu kabla ya kulifuta."
+  }
+}

@@ -89,7 +89,9 @@ export default function PlatformAnalytics() {
     (ticket: any) => ticket.priority === "urgent",
   );
 
-  const healthBreakdown = data.health.reduce(
+  // Typed on the binding: `data.health` is untyped, so the reduce returns any
+  // and Object.entries was handing back `unknown` counts.
+  const healthBreakdown: Record<string, number> = data.health.reduce(
     (acc: Record<string, number>, item: any) => {
       const key = item.health_status || "healthy";
       acc[key] = (acc[key] || 0) + 1;

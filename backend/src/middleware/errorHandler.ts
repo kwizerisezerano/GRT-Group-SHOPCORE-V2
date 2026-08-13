@@ -1,25 +1,44 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+import { sendError } from "../lib/apiResponse";
 import { HttpError } from "../lib/httpError";
 
 export function notFoundHandler(req: Request, res: Response) {
-  res.status(404).json({ error: { code: "not_found", message: `No route for ${req.method} ${req.path}` } });
+  sendError(res, {
+    status: 404,
+    code: "route_not_found",
+    messageKey: "error.routeNotFound",
+    params: { method: req.method, path: req.path },
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof HttpError) {
-    res.status(err.status).json({ error: { code: err.code, message: err.message } });
-    return;
-  }
-
-  if (err instanceof ZodError) {
-    res.status(400).json({
-      error: { code: "validation_error", message: "Invalid request", details: err.flatten() },
+    sendError(res, {
+      status: err.status,
+      code: err.code,
+      messageKey: err.messageKey,
+      params: err.params,
+      details: err.details,
     });
     return;
   }
 
+  if (err instanceof ZodError) {
+    // Field-level detail travels in `details` so the frontend can highlight
+    // the offending inputs, while `message` stays a sentence a user can read.
+    sendError(res, {
+      status: 400,
+      code: "validation_error",
+      messageKey: "error.validation",
+      details: err.flatten(),
+    });
+    return;
+  }
+
+  // Nothing about an unexpected failure is safe to hand a caller — the detail
+  // goes to the log, the response gets a generic apology.
   console.error(err);
-  res.status(500).json({ error: { code: "internal_error", message: "Something went wrong" } });
+  sendError(res, { status: 500, code: "internal_error", messageKey: "error.internal" });
 }

@@ -41,3 +41,8 @@ backend/uploads/
 # Build output
 dist/
 npm-audit.json
+# Local dev logs from scripts/dev-up.sh
+/tmp/shopcore-dev/
+
+# tsc -b incremental build state (npm run typecheck)
+*.tsbuildinfo

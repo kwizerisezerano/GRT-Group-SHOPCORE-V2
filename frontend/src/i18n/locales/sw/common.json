@@ -149,7 +149,9 @@
     "success": "Rekodi {{count}} inayosubiri imelandanishwa",
     "success_plural": "Rekodi {{count}} zinazosubiri zimelandanishwa",
     "failedCount": "Rekodi {{count}} inayosubiri haikuweza kulandanishwa",
-    "failedCount_plural": "Rekodi {{count}} zinazosubiri hazikuweza kulandanishwa"
+    "failedCount_plural": "Rekodi {{count}} zinazosubiri hazikuweza kulandanishwa",
+    "wentOffline": "Muunganisho umepotea. Unafanya kazi nje ya mtandao — kazi yako imehifadhiwa kwenye kifaa hiki na itasawazishwa kiotomatiki.",
+    "backOnline": "Muunganisho umerejeshwa. Tunasawazisha yaliyorekodiwa nje ya mtandao..."
   },
   "validation": {
     "nameMinLength": "Jina linahitaji kuwa na herufi 3 zaidi",

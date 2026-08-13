@@ -53,13 +53,11 @@ export default function SuperAdminSubscriptions() {
         "activate_workspace_after_payment",
         {
           p_tenant_id: tenantId,
+          // One pass over the timestamp's separators. replaceAll is ES2021 and
+          // this project compiles to ES2020, so the chain did not typecheck.
           p_payment_reference: `MANUAL-${new Date()
             .toISOString()
-            .replaceAll("-", "")
-            .replaceAll(":", "")
-            .replaceAll(".", "")
-            .replaceAll("T", "")
-            .replaceAll("Z", "")
+            .replace(/[-:.TZ]/g, "")
             .slice(0, 14)}`,
         },
       );

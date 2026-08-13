@@ -1,8 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  authApi,
+  brandsApi,
+  branchesApi,
+  categoriesApi,
+  createCrudApi,
+  customersApi,
+  expensesApi,
+  productsApi,
+  purchasesApi,
+  salesApi,
+  suppliersApi,
+  unitsApi,
+} from "@/lib/apiClient";
 import { isOfflineMode } from "@/lib/offlineAuth";
 import {
   isOnline,
   isNetworkError,
+  markPendingRecordFailed,
   getPendingProducts,
   clearPendingProduct,
   getPendingCustomers,
@@ -36,8 +51,8 @@ type SyncResult = {
 type ClearFn = (offlineId: string) => Promise<void>;
 
 const OFFLINE_SALE_ID_MAP_KEY = "shopcore_offline_sale_id_map";
+const OFFLINE_PRODUCT_ID_MAP_KEY = "shopcore_offline_product_id_map";
 
-const SUPABASE_REACHABILITY_TIMEOUT_MS = 4500;
 
 const SYNC_OPERATION_TIMEOUT_MS = 20000;
 const SYNC_STEP_TIMEOUT_MS = 45000;
@@ -219,44 +234,6 @@ async function clearPendingAndCached(
   }
 }
 
-async function canReachSupabase() {
-  try {
-    const healthCheck = (supabase as any)
-      .from("profiles")
-      .select("id")
-      .limit(1);
-
-    const response: any = await withTimeout(
-      Promise.resolve(healthCheck),
-      "Supabase reachability check timeout",
-      SUPABASE_REACHABILITY_TIMEOUT_MS,
-    );
-
-    const error = response?.error;
-
-    if (!error) return true;
-
-    const code = String(error?.code || "");
-    const message = String(error?.message || "").toLowerCase();
-
-    // These responses prove the Supabase API is reachable.
-    // They may happen because of RLS, authentication, or schema constraints,
-    // but they should not block offline queue sync from trying.
-    if (
-      code === "PGRST301" ||
-      code === "42501" ||
-      message.includes("permission denied") ||
-      message.includes("jwt") ||
-      message.includes("row-level security")
-    ) {
-      return true;
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
-}
 
 function saleIdentityKeys(item: any) {
   return [
@@ -280,6 +257,46 @@ function readOfflineSaleIdMap(): Record<string, string> {
 
 function writeOfflineSaleIdMap(map: Record<string, string>) {
   localStorage.setItem(OFFLINE_SALE_ID_MAP_KEY, JSON.stringify(map));
+}
+
+/**
+ * Remembers the real id a product received when it synced.
+ *
+ * A sale taken offline can reference a product that was also created offline,
+ * whose id is a local placeholder. Products sync before sales in a run, so
+ * recording the mapping here is what lets those sale lines be replayed against
+ * the right product instead of being recorded against the wrong one — or not
+ * at all.
+ */
+function readOfflineProductIdMap(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(OFFLINE_PRODUCT_ID_MAP_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function rememberProductIdMap(item: any, onlineId: any) {
+  const online = String(onlineId || "");
+  if (!online) return;
+
+  const map = readOfflineProductIdMap();
+  let changed = false;
+
+  for (const key of [item?.id, item?.offline_id, item?.offline_local_id]) {
+    const offline = String(key || "");
+    if (!offline || !isOfflineId(offline)) continue;
+    map[offline] = online;
+    changed = true;
+  }
+
+  if (changed) {
+    try {
+      localStorage.setItem(OFFLINE_PRODUCT_ID_MAP_KEY, JSON.stringify(map));
+    } catch {
+      // localStorage can fail in private mode; sync must continue.
+    }
+  }
 }
 
 function rememberSaleIdMap(offlineId: any, onlineId: any) {
@@ -446,32 +463,37 @@ async function resolveOnlineSaleId(item: any) {
   return null;
 }
 
-async function requireOnlineSupabaseSession() {
+/**
+ * Refuses to start a sync run that cannot possibly succeed.
+ *
+ * This used to demand a *Supabase* session. Once the modules began moving to
+ * the ShopCore API that check could never pass — `supabase.auth.refreshSession()`
+ * goes to an unconfigured host and fails — so every automatic sync aborted
+ * here, before reaching a single record. Offline data queued and stayed
+ * queued, with the run reporting only that a login was required.
+ *
+ * The precondition that actually matters is the one asked for now: the API is
+ * reachable and this device's session works. `hasValidSession()` establishes
+ * both in one call, since it has to reach the API to find out.
+ */
+async function requireOnlineApiSession() {
   if (isOfflineMode()) {
     throw new Error(
       "Online login required before syncing. Please log out of offline mode, then log in using the normal online login tab.",
     );
   }
 
-  const reachable = await canReachSupabase();
-  if (!reachable) {
+  if (!isOnline()) {
     throw new Error(
-      "Internet is connected, but Supabase is not reachable yet. Wait a few seconds and sync again.",
+      "Still offline. Queued records will sync automatically once the connection returns.",
     );
   }
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error)
-    throw new Error(error.message || "Could not verify Supabase session.");
-  if (data.session?.access_token) return data.session;
-
-  await supabase.auth.refreshSession();
-  const refreshed = await supabase.auth.getSession();
-  if (refreshed.data.session?.access_token) return refreshed.data.session;
-
-  throw new Error(
-    "Online login required before syncing. Please log in using the normal online login tab.",
-  );
+  if (!(await authApi.hasValidSession())) {
+    throw new Error(
+      "Your session has expired. Please log in again — nothing queued will be lost.",
+    );
+  }
 }
 
 function asNumber(value: any) {
@@ -638,35 +660,6 @@ function sanitizeBatchPayload(payload: any) {
   return removeUndefinedFields(clean);
 }
 
-function sanitizeSalesPayload(payload: any) {
-  const clean = { ...payload };
-
-  delete clean.id;
-  delete clean.updated_at;
-  delete clean.updated_offline_at;
-  delete clean.created_offline_at;
-  delete clean.sync_status;
-  delete clean.operation;
-  delete clean.offline_id;
-  delete clean.line_items;
-  delete clean.sale_items;
-  delete clean.items_data;
-  delete clean.offline_local_id;
-  delete clean.restore_stock_on_sync;
-  delete clean.restore_reason;
-  delete clean.partial_refund_on_sync;
-  delete clean.partial_refund_items;
-  delete clean.refund_items;
-  delete clean.refund_reason;
-
-  clean.status =
-    clean.status === "pending_sync" ? "completed" : clean.status || "completed";
-  clean.ebm_status = clean.ebm_status || "not_synced";
-  clean.created_at = clean.created_at || new Date().toISOString();
-  clean.date = clean.date || clean.created_at;
-
-  return removeUndefinedFields(clean);
-}
 
 function getItemName(item: any, fields: string[]) {
   return (
@@ -725,26 +718,126 @@ function getLineQuantity(line: any) {
   return asNumber(line?.quantity ?? line?.qty ?? 0);
 }
 
-function sameSaleIdentity(a: any, b: any) {
-  const aKeys = saleIdentityKeys(a);
-  const bKeys = saleIdentityKeys(b);
-  return aKeys.some((key) => bKeys.includes(key));
-}
 
-function hasQueuedOperationForSale(createRecord: any, queuedOps: any[]) {
-  return queuedOps.some((op) => sameSaleIdentity(createRecord, op));
-}
 
-function getRefundStatus(refundedQuantity: number, totalQuantity: number) {
-  if (refundedQuantity <= 0) return "none";
-  return refundedQuantity >= totalQuantity ? "refunded" : "partial_refunded";
-}
 
 async function clearPendingSaleRecord(item: any) {
   await clearPendingAndCached("sales", item, clearPendingSale);
 }
 
+/**
+ * The tables whose queued writes replay through the ShopCore API.
+ *
+ * Everything absent from this map still goes to Supabase. That is the seam the
+ * migration moves one module at a time: a table gets a backend, its name is
+ * added here, and its offline queue starts coming back through the API with no
+ * other change. Anything still on Supabase queues offline and cannot sync yet,
+ * which is a limitation to be honest about rather than to hide.
+ */
+const API_BACKED_TABLES: Record<string, ReturnType<typeof createCrudApi<Record<string, unknown>>>> = {
+  categories: categoriesApi,
+  brands: brandsApi,
+  products: productsApi,
+  customers: customersApi,
+  suppliers: suppliersApi,
+  expenses: expensesApi,
+  units: unitsApi,
+  branches: branchesApi,
+};
+
+/**
+ * Replays one queued create, update or delete through the API.
+ *
+ * The awkward case is an update or delete addressed to a record that only ever
+ * existed on this device — its id is a local placeholder, so there is nothing
+ * on the server to patch or remove. An update becomes a create, because the
+ * record still needs to exist; a delete becomes nothing at all, because a row
+ * that was created and destroyed while offline has no server-side history
+ * worth reconstructing.
+ */
+async function syncRecordViaApi(
+  table: string,
+  item: any,
+  clearFn: ClearFn,
+): Promise<string | null> {
+  const api = API_BACKED_TABLES[table];
+  const operation = String(item.operation || "create").toLowerCase();
+  const payload = sanitizeGenericPayload(item);
+
+  const clearThis = async (onlineId?: string | null) => {
+    const keys = uniqueKeys(
+      item.offline_id,
+      item.id,
+      item.offline_local_id,
+      item.client_id,
+      payload?.id,
+      onlineId,
+    );
+
+    for (const key of keys) {
+      await clearFn(key).catch(() => undefined);
+      await clearPending(table, key).catch(() => undefined);
+      await removeCachedRecord(table, key).catch(() => undefined);
+      await clearSyncedDirtyCacheRecord(table, key).catch(() => undefined);
+    }
+  };
+
+  // The server owns identity and audit columns, and the offline bookkeeping
+  // fields describe this device's queue rather than the record.
+  const body = { ...payload };
+  delete body.id;
+  delete body.tenant_id;
+  delete body.created_at;
+  delete body.updated_at;
+  delete body.sync_status;
+  delete body.operation;
+  delete body.offline_id;
+  delete body.offline_local_id;
+  delete body.created_offline_at;
+  delete body.updated_offline_at;
+
+  if (operation === "delete") {
+    if (!payload.id || isOfflineId(payload.id)) {
+      // Created and deleted while offline. It never reached the server, so
+      // there is nothing to delete — dropping the queue entry is the whole job.
+      await clearThis();
+      return null;
+    }
+
+    try {
+      await api.remove(String(payload.id));
+    } catch (error: any) {
+      // Already gone is the outcome that was wanted. Anything else is real.
+      if (error?.status !== 404) throw error;
+    }
+
+    await clearThis(String(payload.id));
+    return String(payload.id);
+  }
+
+  if (operation === "update" && payload.id && !isOfflineId(payload.id)) {
+    const updated = await api.update(String(payload.id), body);
+    await clearThis(String(payload.id));
+    return String((updated.data as any)?.id ?? payload.id);
+  }
+
+  // Create, or an update to something the server has never seen.
+  const created = await api.create(body);
+  const onlineId = String((created.data as any)?.id ?? "");
+
+  if (table === "products") rememberProductIdMap(item, onlineId);
+
+  await clearThis(onlineId || null);
+  return onlineId || null;
+}
+
 async function syncRecord(table: string, item: any, clearFn: ClearFn) {
+  // Modules that have a backend replay through it; the rest still go to
+  // Supabase until theirs lands. See API_BACKED_TABLES.
+  if (API_BACKED_TABLES[table]) {
+    return syncRecordViaApi(table, item, clearFn);
+  }
+
   const operation = String(item.operation || "create").toLowerCase();
   const payload = sanitizeGenericPayload(item);
 
@@ -823,7 +916,10 @@ async function syncGenericPendingTable(
 ) {
   const items = await getPending(table);
 
-  if (items.length > 0 && !(await canSyncTable(table))) {
+  // The "does this table exist" probe asks Supabase, so it can only answer for
+  // tables Supabase still owns. Asking it about an API-backed table would skip
+  // a queue that is perfectly syncable.
+  if (items.length > 0 && !API_BACKED_TABLES[table] && !(await canSyncTable(table))) {
     result.errors.push(
       `${label}: skipped because Supabase table "${table}" does not exist yet.`,
     );
@@ -892,6 +988,46 @@ async function syncStockBatches(result: SyncResult) {
 async function syncProducts(result: SyncResult) {
   const items = await getPendingProducts();
 
+  /*
+   * Products have a backend, so their queue replays through it — the same
+   * generic path every other API-backed table uses. What follows is the
+   * Supabase implementation, kept only until the remaining tables move across.
+   *
+   * Validation still runs first: a queued product with no name cannot be
+   * created anywhere, and discarding it with a reason is better than sending
+   * the API something it will reject on every retry forever.
+   */
+  if (API_BACKED_TABLES.products) {
+    for (const item of items) {
+      const validationError = validateProductSyncRecord(item);
+
+      if (validationError) {
+        await discardInvalidPendingRecord(
+          result,
+          "products",
+          item,
+          "Product",
+          validationError,
+          clearPendingProduct,
+        );
+        continue;
+      }
+
+      try {
+        await syncRecordViaApi("products", item, clearPendingProduct);
+        result.synced += 1;
+      } catch (error: any) {
+        if (isNetworkError(error) || error?.status === 0) throw error;
+        result.failed += 1;
+        result.errors.push(
+          `Product "${getItemName(item, ["name"])}": ${error?.message || "sync failed"}`,
+        );
+      }
+    }
+
+    return;
+  }
+
   for (const item of items) {
     try {
       const operation = String(item.operation || "create").toLowerCase();
@@ -933,6 +1069,7 @@ async function syncProducts(result: SyncResult) {
 
       if (existingProduct?.id) {
         const onlineId = existingProduct.id;
+        rememberProductIdMap(item, onlineId);
         delete payload.id;
 
         const { error } = await (supabase as any)
@@ -982,6 +1119,7 @@ async function syncProducts(result: SyncResult) {
       if (createError) throw createError;
 
       const onlineId = createdProduct?.id || null;
+      rememberProductIdMap(item, onlineId);
 
       if (onlineId && item.tenant_id && Number.isFinite(stockValue)) {
         await updateProductStockAbsolute({
@@ -1052,20 +1190,88 @@ async function syncExpenses(result: SyncResult) {
   }
 }
 
+/**
+ * Replays goods receipts taken while the till was disconnected.
+ *
+ * A purchase is a transaction, not a record — a header, its lines and a stock
+ * movement per product — so it replays through its own endpoint rather than
+ * the generic CRUD path, exactly as sales do. Idempotent on the same key,
+ * because a delivery counted twice inflates stock as surely as a sale counted
+ * twice deflates it.
+ */
 async function syncPurchases(result: SyncResult) {
   const items = await getPendingPurchases();
+
   for (const item of items) {
+    const label = item.purchase_no || item.supplier_name || item.id;
+
     try {
-      await syncRecord("purchases", item, clearPendingPurchase);
+      const lines = getPurchaseLines(item);
+
+      if (lines.length === 0) {
+        await quarantinePending(
+          "purchases",
+          item,
+          result,
+          `Purchase "${label}"`,
+          "the queued receipt has no line items",
+        );
+        continue;
+      }
+
+      const unresolved = lines.filter((line: any) => !resolveLineProductId(line));
+      if (unresolved.length > 0) {
+        await quarantinePending(
+          "purchases",
+          item,
+          result,
+          `Purchase "${label}"`,
+          `${unresolved.length} line(s) reference a product that has not synced yet`,
+        );
+        continue;
+      }
+
+      await purchasesApi.create({
+        items: lines.map((line: any) => ({
+          product_id: resolveLineProductId(line)!,
+          quantity: getLineQuantity(line),
+          unit_cost: asNumber(line.unit_cost ?? line.cost_price ?? line.price),
+        })),
+        supplier_id: isOfflineId(item.supplier_id) ? null : item.supplier_id || null,
+        supplier_name: item.supplier_name || null,
+        purchase_no: item.purchase_no || null,
+        discount: asNumber(item.discount),
+        tax: asNumber(item.tax),
+        status: item.status || "completed",
+        payment_status: item.payment_status || "paid",
+        notes: item.notes || null,
+        client_request_id: item.client_request_id || item.offline_id || item.id,
+        offline: true,
+        completed_at: item.completed_at || item.purchase_date || item.date || undefined,
+      });
+
+      await clearPendingAndCached("purchases", item, clearPendingPurchase);
       result.synced += 1;
     } catch (error: any) {
-      if (isNetworkError(error)) throw error;
-      result.failed += 1;
-      result.errors.push(
-        `Purchase "${item.purchase_no || item.supplier_name || item.id}": ${error?.message || "sync failed"}`,
+      // Could not reach the server: nothing is wrong with the receipt, so it
+      // stays queued and the run stops. See syncSales for the reasoning.
+      if (isNetworkError(error) || error?.status === 0) throw error;
+
+      await quarantinePending(
+        "purchases",
+        item,
+        result,
+        `Purchase "${label}"`,
+        error?.message || "the server refused it",
       );
     }
   }
+}
+
+function getPurchaseLines(record: any) {
+  const lines =
+    record?.line_items || record?.purchase_items || record?.items_data || record?.items || [];
+  return Array.isArray(lines) ? lines : [];
 }
 
 async function findExistingSale(item: any) {
@@ -1083,120 +1289,8 @@ async function findExistingSale(item: any) {
   return data;
 }
 
-async function resolveSaleProduct(line: any, tenantId: string) {
-  const productId = String(line.product_id || "");
-  if (productId && !isOfflineId(productId)) return productId;
 
-  const sku = String(line.sku || "").trim();
-  if (sku) {
-    const { data, error } = await (supabase as any)
-      .from("products")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .eq("sku", sku)
-      .maybeSingle();
 
-    if (error) throw error;
-    if (data?.id) return data.id;
-  }
-
-  const name = String(line.product_name || line.name || "").trim();
-  if (name) {
-    const { data, error } = await (supabase as any)
-      .from("products")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .ilike("name", name)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (data?.id) return data.id;
-  }
-
-  return null;
-}
-
-async function resolveBatchId(
-  line: any,
-  tenantId: string,
-  productId: string | null,
-) {
-  if (!productId) return null;
-
-  const givenBatchId = String(line.batch_id || "");
-  if (givenBatchId && !isOfflineId(givenBatchId)) return givenBatchId;
-
-  const batchNo = String(line.batch_no || line.batch_ref || "").trim();
-  if (batchNo) {
-    const { data, error } = await (supabase as any)
-      .from("stock_batches")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .eq("product_id", productId)
-      .eq("batch_no", batchNo)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (data?.id) return data.id;
-  }
-
-  const unitCost = asNumber(line.unit_cost ?? line.cost_price);
-  const unitPrice = asNumber(
-    line.unit_price ?? line.selling_price ?? line.price,
-  );
-
-  let query = (supabase as any)
-    .from("stock_batches")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("product_id", productId)
-    .gt("quantity_remaining", 0)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (unitCost > 0) query = query.eq("cost_price", unitCost);
-  if (unitPrice > 0) query = query.eq("selling_price", unitPrice);
-
-  const { data, error } = await query.maybeSingle();
-  if (error) throw error;
-  return data?.id || null;
-}
-
-async function decrementBatchQuantity(
-  batchId: string | null,
-  tenantId: string,
-  quantity: number,
-) {
-  if (!batchId || quantity <= 0) return;
-
-  const { data: batch, error: batchError } = await (supabase as any)
-    .from("stock_batches")
-    .select("id, quantity_remaining")
-    .eq("id", batchId)
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-
-  if (batchError) throw batchError;
-  if (!batch) return;
-
-  const nextRemaining = Math.max(
-    0,
-    asNumber(batch.quantity_remaining) - quantity,
-  );
-
-  const { error } = await (supabase as any)
-    .from("stock_batches")
-    .update({
-      quantity_remaining: nextRemaining,
-      status: nextRemaining <= 0 ? "depleted" : "active",
-    })
-    .eq("id", batchId)
-    .eq("tenant_id", tenantId);
-
-  if (error) throw error;
-}
 
 async function incrementBatchQuantity(
   batchId: string | null,
@@ -1654,272 +1748,181 @@ async function syncQueuedSaleOperations(result: SyncResult) {
   }
 }
 
+/**
+ * Replays sales taken while the till was disconnected.
+ *
+ * This used to write the sale, its line items, each product's new stock and
+ * each stock movement as separate calls, guarding against duplicates by
+ * reading back an invoice number first. Both halves of that were unsound. The
+ * check was check-then-act: two replays could both read "not found" and both
+ * insert. And the writes were not a transaction, so a sync interrupted halfway
+ * left a sale whose stock never moved, or stock moved for a sale that was
+ * never recorded — on a till that syncs precisely because its connection is
+ * unreliable.
+ *
+ * It is now one call per sale to an endpoint that does all of it atomically
+ * and is idempotent on `client_request_id`. Replaying is therefore always
+ * safe: the server records the sale once and answers every later attempt with
+ * the original. That is what lets this function retry without counting, and
+ * what makes a lost reply cost nothing.
+ */
 async function syncSales(result: SyncResult) {
-  const allPendingSales = await getPending("sales");
-  const queuedOps = allPendingSales.filter(isQueuedSaleOperationRecord);
   const items = (await getPendingSales()).filter(isSaleCreateRecord);
 
   for (const item of items) {
     try {
-      const existingSale = await findExistingSale(item);
-      if (existingSale?.id) {
-        rememberSaleIdMap(item.id, existingSale.id);
-        rememberSaleIdMap(item.offline_id, existingSale.id);
-        rememberSaleIdMap(item.offline_local_id, existingSale.id);
-        await clearPendingSaleRecord(item);
-        result.synced += 1;
+      const lines = getSaleLines(item);
+
+      if (lines.length === 0) {
+        await quarantineSale(item, result, "the queued sale has no line items");
         continue;
       }
 
-      const lineItems = getSaleLines(item);
-      const salePayload = sanitizeSalesPayload(item);
-      const separateQueuedOperationWillReplayRefund = hasQueuedOperationForSale(
-        item,
-        queuedOps,
-      );
-
-      const { data: sale, error: saleError } = await (supabase as any)
-        .from("sales")
-        .insert(salePayload)
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      rememberSaleIdMap(item.id, sale.id);
-      rememberSaleIdMap(item.offline_id, sale.id);
-      rememberSaleIdMap(item.offline_local_id, sale.id);
-
-      if (Array.isArray(lineItems) && lineItems.length > 0) {
-        const saleItems: any[] = [];
-        const saleItemMeta: any[] = [];
-
-        for (const line of lineItems) {
-          const productId = await resolveSaleProduct(line, sale.tenant_id);
-          const batchId = await resolveBatchId(line, sale.tenant_id, productId);
-          const unitPrice = asNumber(line.unit_price || line.price);
-          const quantity = getLineQuantity(line);
-          const unitCost = asNumber(line.unit_cost || line.cost_price);
-          const lineSubtotal = asNumber(line.subtotal || unitPrice * quantity);
-          const lineDiscount = asNumber(line.discount);
-          const lineTax = asNumber(line.tax);
-          const lineTotal = asNumber(
-            line.total || lineSubtotal - lineDiscount + lineTax,
-          );
-          const costTotal = asNumber(line.cost_total || unitCost * quantity);
-          const offlineRefundedQuantity = Math.min(
-            quantity,
-            getLineRefundedQuantity(line),
-          );
-
-          saleItems.push({
-            sale_id: sale.id,
-            tenant_id: sale.tenant_id,
-            product_id: productId,
-            product_name: line.product_name || line.name || "Unknown Product",
-            sku: line.sku || null,
-            quantity,
-            unit_price: unitPrice,
-            unit_cost: unitCost,
-            subtotal: lineSubtotal,
-            discount: lineDiscount,
-            tax: lineTax,
-            total: lineTotal,
-            cost_total: costTotal,
-            gross_profit: lineTotal - costTotal,
-            batch_id: batchId,
-            refunded_quantity: 0,
-            refund_status: "none",
-          });
-
-          saleItemMeta.push({ offlineRefundedQuantity });
-        }
-
-        const { data: insertedSaleItems, error: itemsError } = await (
-          supabase as any
-        )
-          .from("sale_items")
-          .insert(saleItems)
-          .select(
-            "id, sale_id, tenant_id, product_id, product_name, sku, quantity, unit_price, unit_cost, total, refunded_quantity, refund_status, batch_id",
-          );
-
-        if (itemsError) throw itemsError;
-
-        const stockLines = (
-          insertedSaleItems?.length ? insertedSaleItems : saleItems
-        ).map((line: any, index: number) => ({
-          ...saleItems[index],
-          ...line,
-          offlineRefundedQuantity:
-            saleItemMeta[index]?.offlineRefundedQuantity || 0,
-        }));
-
-        for (const line of stockLines) {
-          if (!line.product_id) continue;
-
-          const { data: product, error: productError } = await (supabase as any)
-            .from("products")
-            .select("id, stock, stock_quantity, name")
-            .eq("id", line.product_id)
-            .eq("tenant_id", sale.tenant_id)
-            .maybeSingle();
-
-          if (productError) throw productError;
-          if (!product) continue;
-
-          const currentStock = Number(
-            product.stock ?? product.stock_quantity ?? 0,
-          );
-          const newStock = currentStock - Number(line.quantity || 0);
-
-          const { error: stockError } = await (supabase as any)
-            .from("products")
-            .update({
-              stock: newStock,
-              stock_quantity: newStock,
-              status: newStock <= 0 ? "out_of_stock" : "active",
-            })
-            .eq("id", line.product_id)
-            .eq("tenant_id", sale.tenant_id);
-
-          if (stockError) throw stockError;
-
-          await decrementBatchQuantity(
-            line.batch_id || null,
-            sale.tenant_id,
-            Number(line.quantity || 0),
-          );
-
-          const { error: movementError } = await (supabase as any)
-            .from("stock_movements")
-            .insert({
-              tenant_id: sale.tenant_id,
-              user_id: sale.user_id,
-              product_id: line.product_id,
-              product_name: line.product_name,
-              movement_type: "sale",
-              quantity_change: -Number(line.quantity || 0),
-              stock_before: currentStock,
-              stock_after: newStock,
-              reference: sale.invoice_no,
-              reference_id: sale.id,
-              notes: `Synced offline sale receipt ${sale.receipt_no || sale.invoice_no}`,
-              created_at: new Date().toISOString(),
-            });
-
-          if (movementError) throw movementError;
-        }
-
-        if (!separateQueuedOperationWillReplayRefund) {
-          const embeddedRefundLines = stockLines.filter(
-            (line: any) =>
-              asNumber(line.offlineRefundedQuantity) > 0 && line.product_id,
-          );
-
-          if (embeddedRefundLines.length > 0) {
-            const refundNo =
-              item.refund_no || `RF-${Date.now().toString().slice(-8)}`;
-            let refundTotal = 0;
-
-            const { data: refund, error: refundError } = await (supabase as any)
-              .from("sale_refunds")
-              .insert({
-                tenant_id: sale.tenant_id,
-                sale_id: sale.id,
-                refund_no: refundNo,
-                refund_type: embeddedRefundLines.every(
-                  (line: any) =>
-                    asNumber(line.offlineRefundedQuantity) >=
-                    asNumber(line.quantity),
-                )
-                  ? "full"
-                  : "partial",
-                refund_total: 0,
-                reason:
-                  item.refund_reason ||
-                  item.reason ||
-                  "Offline refund synced with sale",
-                status: "completed",
-                user_id: sale.user_id || item.user_id || null,
-                created_at: new Date().toISOString(),
-              })
-              .select()
-              .single();
-
-            if (refundError) throw refundError;
-
-            const refundRows: any[] = [];
-
-            for (const line of embeddedRefundLines) {
-              const quantity = Math.min(
-                asNumber(line.quantity),
-                asNumber(line.offlineRefundedQuantity),
-              );
-              const unitPrice = asNumber(line.unit_price);
-              const unitCost = asNumber(line.unit_cost);
-              const total = unitPrice * quantity;
-              refundTotal += total;
-
-              await restoreSingleProductStock({
-                tenantId: sale.tenant_id,
-                userId: sale.user_id || item.user_id || null,
-                saleId: sale.id,
-                saleItemId: line.id || null,
-                productId: line.product_id,
-                productName: line.product_name,
-                batchId: line.batch_id,
-                quantity,
-                reason: "refund",
-              });
-
-              refundRows.push({
-                tenant_id: sale.tenant_id,
-                refund_id: refund.id,
-                sale_id: sale.id,
-                sale_item_id: line.id,
-                product_id: line.product_id,
-                product_name: line.product_name,
-                quantity,
-                unit_price: unitPrice,
-                unit_cost: unitCost,
-                total,
-                batch_id: line.batch_id,
-                created_at: new Date().toISOString(),
-              });
-            }
-
-            if (refundRows.length > 0) {
-              const { error: refundItemsError } = await (supabase as any)
-                .from("sale_refund_items")
-                .insert(refundRows);
-              if (refundItemsError) throw refundItemsError;
-            }
-
-            const { error: refundTotalError } = await (supabase as any)
-              .from("sale_refunds")
-              .update({ refund_total: refundTotal })
-              .eq("id", refund.id)
-              .eq("tenant_id", sale.tenant_id);
-
-            if (refundTotalError) throw refundTotalError;
-            await recalculateSaleAfterRefund(sale.id, sale.tenant_id);
-          }
-        }
+      /*
+       * A refund taken while offline cannot be replayed yet — there is no
+       * refunds endpoint behind the API. Syncing the sale and dropping the
+       * refund would overstate takings and understate stock, so the whole
+       * record is held back for a human instead. It stays in the queue rather
+       * than being lost.
+       */
+      if (lines.some((line: any) => getLineRefundedQuantity(line) > 0)) {
+        await quarantineSale(
+          item,
+          result,
+          "it carries a refund taken offline, which cannot be synced until the refunds module exists",
+        );
+        continue;
       }
 
+      const unresolved = lines.filter((line: any) => !resolveLineProductId(line));
+      if (unresolved.length > 0) {
+        await quarantineSale(
+          item,
+          result,
+          `${unresolved.length} line(s) reference a product that has not synced yet`,
+        );
+        continue;
+      }
+
+      const sale = await salesApi.checkout({
+        items: lines.map((line: any) => ({
+          product_id: resolveLineProductId(line)!,
+          quantity: getLineQuantity(line),
+          unit_price: asNumber(line.unit_price ?? line.price),
+          unit_cost: asNumber(line.unit_cost ?? line.cost_price),
+          discount: asNumber(line.discount),
+          batch_id: isOfflineId(line.batch_id) ? null : line.batch_id || null,
+        })),
+        customer_name: item.customer_name || null,
+        customer_phone: item.customer_phone || null,
+        customer_tin: item.customer_tin || item.tin_number || null,
+        payment_method: item.payment_method || "cash",
+        momo_number: item.momo_number || null,
+        momo_code: item.momo_code || null,
+        paid: asNumber(item.paid ?? item.total),
+        discount: asNumber(item.discount),
+        branch: item.branch || null,
+        cashier: item.cashier || null,
+        receipt_no: item.receipt_no || null,
+        notes: item.notes || null,
+
+        /*
+         * The key the till chose when it first tried to record this sale. If
+         * an online attempt had already reached the server before the
+         * connection dropped, this replay finds that sale rather than making
+         * a second one.
+         *
+         * Falling back to the offline id keeps sales queued before this
+         * existed replayable — they simply become their own key.
+         */
+        client_request_id: item.client_request_id || item.offline_id || item.id,
+
+        // Permits stock to go negative: the goods left the shop already.
+        offline: true,
+        completed_at: item.completed_at || item.date || undefined,
+      });
+
+      rememberSaleIdMapFromItem(item, sale.id);
       await clearPendingSaleRecord(item);
       result.synced += 1;
     } catch (error: any) {
-      if (isNetworkError(error)) throw error;
-      result.failed += 1;
-      result.errors.push(
-        `Sale "${item.receipt_no || item.invoice_no || item.id}": ${
-          error?.message || "sync failed"
-        }`,
-      );
+      /*
+       * Two failures that look alike and must not be treated alike.
+       *
+       * Could not reach the server — still offline, or it went away mid-sync.
+       * Nothing is wrong with the sale, so it stays queued and the whole run
+       * stops: there is no point walking the rest of the queue into the same
+       * wall. Throwing is what the caller uses to know the run was cut short
+       * rather than completed with failures.
+       */
+      if (isNetworkError(error) || error?.status === 0) throw error;
+
+      /*
+       * The server answered and refused. Retrying will fail identically every
+       * time, so leaving it in the queue would be a hot loop that never
+       * drains and quietly hides the sale. It is set aside with the server's
+       * own explanation attached, where someone can see it.
+       */
+      await quarantineSale(item, result, error?.message || "the server refused it");
     }
   }
+}
+
+/**
+ * Sets a queued sale aside with a reason, instead of retrying it forever or
+ * dropping it.
+ *
+ * A sale is money and stock, so neither silent discard nor an endless retry
+ * loop is acceptable — both end with a shop whose books are wrong and nobody
+ * told. Quarantined records are readable through
+ * `getQuarantinedOfflineRecords()`.
+ */
+async function quarantineSale(item: any, result: SyncResult, reason: string) {
+  const label = item.receipt_no || item.invoice_no || item.id;
+  await quarantinePending("sales", item, result, `Sale "${label}"`, reason);
+}
+
+/**
+ * Sets a queued record of any kind aside with a reason.
+ *
+ * The shared half of the rule every module follows: a record the server
+ * actively refused will be refused identically on every retry, so leaving it
+ * in the queue is a hot loop that never drains and quietly hides the record.
+ * Setting it aside with the server's own explanation keeps it recoverable and
+ * visible — `getQuarantinedOfflineRecords()` reads them.
+ */
+async function quarantinePending(
+  table: string,
+  item: any,
+  result: SyncResult,
+  label: string,
+  reason: string,
+) {
+  await markPendingRecordFailed(table, item.offline_id || item.id, reason).catch(
+    () => undefined,
+  );
+
+  result.failed += 1;
+  result.errors.push(`${label}: ${reason}`);
+}
+
+/**
+ * The real product id for a queued line, or null when it does not have one
+ * yet.
+ *
+ * A sale taken offline can reference a product that was also created offline,
+ * whose id is a local placeholder until it syncs. Products are synced before
+ * sales in the same run, so by the time this is asked the mapping usually
+ * exists; when it does not, the sale waits rather than being recorded against
+ * the wrong product.
+ */
+function resolveLineProductId(line: any): string | null {
+  const raw = String(line?.product_id || "");
+  if (!raw) return null;
+  if (!isOfflineId(raw)) return raw;
+
+  const mapped = readOfflineProductIdMap()[raw];
+  return mapped || null;
 }
 
 async function syncStockMovements(result: SyncResult) {
@@ -2339,7 +2342,7 @@ export async function syncOfflineData(): Promise<SyncResult> {
   }
 
   try {
-    await requireOnlineSupabaseSession();
+    await requireOnlineApiSession();
     const syncTenantId = await getSyncTenantId();
 
     await runSyncStep(result, "Categories", () =>

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../../db/prisma";
+import { sendSuccess } from "../../lib/apiResponse";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth } from "../../middleware/auth";
 import { createPendingWorkspace } from "./workspace.service";
@@ -13,7 +14,7 @@ workspaceRouter.get(
       where: { isActive: true, isPublic: true },
       orderBy: { code: "asc" },
     });
-    res.json({ plans });
+    sendSuccess(res, { messageKey: "workspace.plansLoaded", data: { plans } });
   })
 );
 
@@ -24,7 +25,7 @@ workspaceRouter.get(
       where: { isActive: true },
       orderBy: { displayOrder: "asc" },
     });
-    res.json({ paymentMethods });
+    sendSuccess(res, { messageKey: "workspace.paymentMethodsLoaded", data: { paymentMethods } });
   })
 );
 
@@ -33,6 +34,6 @@ workspaceRouter.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const result = await createPendingWorkspace({ ...req.body, userId: req.user!.id });
-    res.json(result);
+    sendSuccess(res, { messageKey: "workspace.created", data: result });
   })
 );

@@ -1,12 +1,13 @@
 import { prisma } from "../../db/prisma";
+import { emailBlindIndex, encrypt, encryptNullable, phoneBlindIndexNullable } from "../../lib/crypto";
 import { HttpError } from "../../lib/httpError";
 
 export type CreatePendingWorkspaceInput = {
   userId: string;
   email: string;
-  displayName: string; // already client-side AES-encrypted, stored as opaque text
+  displayName: string; // plaintext in; encrypted server-side before storage
   businessName: string;
-  businessPhone?: string; // already client-side AES-encrypted, stored as opaque text
+  businessPhone?: string; // plaintext in; encrypted server-side before storage
   businessLocation?: string;
   businessType?: string;
   teamSize?: string;
@@ -29,14 +30,17 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
     where: { code: input.planCode, isActive: true },
   });
   if (!plan) {
-    throw HttpError.badRequest(`Invalid or inactive subscription plan: ${input.planCode}`);
+    throw HttpError.badRequest("workspace.invalidPlan", { code: "invalid_plan", params: { plan: input.planCode } });
   }
 
   const price = await prisma.subscriptionPlanPrice.findFirst({
     where: { planCode: input.planCode, billingCycle: input.billingCycle, isActive: true },
   });
   if (!price) {
-    throw HttpError.badRequest(`No active price for plan ${input.planCode} / ${input.billingCycle}`);
+    throw HttpError.badRequest("workspace.invalidPrice", {
+      code: "invalid_price",
+      params: { plan: input.planCode, cycle: input.billingCycle },
+    });
   }
 
   if (input.paymentMethod) {
@@ -44,7 +48,10 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
       where: { code: input.paymentMethod, isActive: true },
     });
     if (!paymentMethod) {
-      throw HttpError.badRequest(`Unknown payment method: ${input.paymentMethod}`);
+      throw HttpError.badRequest("workspace.invalidPaymentMethod", {
+        code: "invalid_payment_method",
+        params: { method: input.paymentMethod },
+      });
     }
   }
 
@@ -63,7 +70,8 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
       data: {
         name: input.businessName,
         ownerId: input.userId,
-        contactEmail: input.email,
+        contactEmailEncrypted: encrypt(input.email),
+        contactEmailHash: emailBlindIndex(input.email),
         subscriptionPlan: input.planCode,
         subscriptionStatus: "active",
         paymentStatus: "paid",
@@ -86,8 +94,9 @@ export async function createPendingWorkspace(input: CreatePendingWorkspaceInput)
       create: {
         id: input.userId,
         tenantId: tenant.id,
-        displayName: input.displayName,
-        phone: input.businessPhone,
+        displayNameEncrypted: encrypt(input.displayName),
+        phoneEncrypted: encryptNullable(input.businessPhone),
+        phoneHash: phoneBlindIndexNullable(input.businessPhone),
         language: input.language || "en",
       },
       update: { tenantId: tenant.id },

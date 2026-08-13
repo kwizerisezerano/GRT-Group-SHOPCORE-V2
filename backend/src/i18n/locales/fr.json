@@ -1,0 +1,196 @@
+{
+  "auth": {
+    "signupSuccess": "Votre compte et votre espace de travail ont été créés avec succès.",
+    "emailExists": "Un compte utilisant cette adresse e-mail existe déjà.",
+    "phoneExists": "Un compte utilisant ce numéro de téléphone existe déjà.",
+    "loginSuccess": "Connexion réussie.",
+    "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
+    "logoutSuccess": "Déconnexion réussie.",
+    "tokenRefreshed": "Session actualisée avec succès.",
+    "invalidRefreshToken": "Votre session a expiré. Veuillez vous reconnecter.",
+    "profileLoaded": "Détails du compte chargés avec succès.",
+    "missingToken": "Vous devez être connecté pour effectuer cette action.",
+    "invalidToken": "Votre session est invalide ou a expiré. Veuillez vous reconnecter.",
+    "passwordResetRequested": "Si cette adresse e-mail est enregistrée, un lien de réinitialisation lui a été envoyé.",
+    "passwordResetCompleted": "Votre mot de passe a été mis à jour avec succès. Veuillez vous connecter avec votre nouveau mot de passe.",
+    "invalidResetToken": "Ce lien de réinitialisation est invalide ou a expiré. Veuillez en demander un nouveau.",
+    "noWorkspace": "Vous n'êtes pas membre de cet espace de travail.",
+    "missingPermission": "Vous n'avez pas l'autorisation de faire cela. Requis : {{permission}}.",
+    "membershipSuspended": "Votre accès à cet espace de travail est suspendu. Demandez à un administrateur de le rétablir."
+  },
+  "workspace": {
+    "plansLoaded": "Formules d'abonnement chargées avec succès.",
+    "paymentMethodsLoaded": "Moyens de paiement chargés avec succès.",
+    "created": "Espace de travail créé avec succès.",
+    "requiresTenant": "Cette action nécessite un espace de travail actif.",
+    "invalidPlan": "La formule d'abonnement sélectionnée est invalide ou n'est plus disponible.",
+    "invalidPrice": "Aucun tarif actif n'a été trouvé pour la formule et la périodicité sélectionnées.",
+    "invalidPaymentMethod": "Le moyen de paiement sélectionné n'est pas reconnu."
+  },
+  "common": {
+    "created": "Enregistrement créé avec succès.",
+    "updated": "Enregistrement mis à jour avec succès.",
+    "deleted": "Enregistrement supprimé avec succès.",
+    "loaded": "Enregistrements chargés avec succès.",
+    "healthy": "Le service fonctionne normalement."
+  },
+  "error": {
+    "validation": "Certaines informations saisies sont invalides. Veuillez vérifier les champs signalés.",
+    "notFound": "L'enregistrement demandé est introuvable.",
+    "routeNotFound": "Aucune route n'existe pour {{method}} {{path}}.",
+    "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action.",
+    "forbidden": "Vous n'avez pas la permission d'effectuer cette action.",
+    "conflict": "Cet enregistrement existe déjà.",
+    "internal": "Une erreur est survenue de notre côté. Veuillez réessayer."
+  },
+  "email": {
+    "common": {
+      "greeting": "Bonjour {{name}},",
+      "linkFallback": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+      "footer": "Ceci est un message automatique de ShopCore. Merci de ne pas y répondre.",
+      "ignore": "Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail."
+    },
+    "accountCreated": {
+      "subject": "Bienvenue sur ShopCore",
+      "heading": "Votre espace de travail est prêt",
+      "body": "Votre compte ShopCore et l'espace de travail {{workspace}} ont été créés avec succès. Vous pouvez vous connecter dès maintenant et commencer à configurer votre entreprise.",
+      "cta": "Ouvrir ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Réinitialisez votre mot de passe ShopCore",
+      "heading": "Réinitialisez votre mot de passe",
+      "body": "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte ShopCore. Choisissez-en un nouveau à l'aide du bouton ci-dessous. Ce lien expire dans une heure.",
+      "cta": "Réinitialiser le mot de passe"
+    },
+    "passwordChanged": {
+      "subject": "Votre mot de passe ShopCore a été modifié",
+      "heading": "Mot de passe modifié",
+      "body": "Le mot de passe de votre compte ShopCore a été modifié avec succès. Tous les autres appareils ont été déconnectés. Si vous n'êtes pas à l'origine de cette action, réinitialisez votre mot de passe immédiatement et contactez le support.",
+      "cta": "Vérifier la sécurité du compte"
+    },
+    "subscriptionActivated": {
+      "subject": "Votre abonnement ShopCore est actif",
+      "heading": "Abonnement activé",
+      "body": "Votre abonnement {{plan}} est désormais actif avec une périodicité {{cycle}} pour l'espace de travail {{workspace}}. Merci d'avoir choisi ShopCore.",
+      "cta": "Voir la facturation"
+    }
+  },
+  "catalog": {
+    "categoryListed": "Catégories chargées avec succès.",
+    "categoryFetched": "Catégorie chargée avec succès.",
+    "categoryCreated": "Catégorie créée avec succès.",
+    "categoryUpdated": "Catégorie mise à jour avec succès.",
+    "categoryDeleted": "Catégorie supprimée avec succès.",
+    "categoryNotFound": "Cette catégorie est introuvable.",
+    "categoryDuplicate": "Une catégorie portant ce nom existe déjà.",
+    "categoryInUse": "Cette catégorie ne peut pas être supprimée tant que des produits y sont associés.",
+    "brandListed": "Marques chargées avec succès.",
+    "brandFetched": "Marque chargée avec succès.",
+    "brandCreated": "Marque créée avec succès.",
+    "brandUpdated": "Marque mise à jour avec succès.",
+    "brandDeleted": "Marque supprimée avec succès.",
+    "brandNotFound": "Cette marque est introuvable.",
+    "brandDuplicate": "Une marque portant ce nom existe déjà.",
+    "brandInUse": "Cette marque ne peut pas être supprimée tant que des produits y sont associés.",
+    "productListed": "Produits chargés avec succès.",
+    "productFetched": "Produit chargé avec succès.",
+    "productCreated": "Produit créé avec succès.",
+    "productUpdated": "Produit mis à jour avec succès.",
+    "productDeleted": "Produit supprimé avec succès.",
+    "productNotFound": "Ce produit est introuvable.",
+    "productDuplicate": "Un produit avec ce SKU ou ce code-barres existe déjà.",
+    "invalidCategory": "La catégorie sélectionnée n'existe pas.",
+    "invalidBrand": "La marque sélectionnée n'existe pas.",
+    "priceBelowCost": "Le prix de vente ne peut pas être inférieur au prix de revient."
+  },
+  "crm": {
+    "customerListed": "Clients chargés avec succès.",
+    "customerFetched": "Client chargé avec succès.",
+    "customerCreated": "Client créé avec succès.",
+    "customerUpdated": "Client mis à jour avec succès.",
+    "customerDeleted": "Client supprimé avec succès.",
+    "customerNotFound": "Ce client est introuvable.",
+    "customerDuplicate": "Un client avec cet e-mail ou ce numéro de téléphone existe déjà.",
+    "supplierListed": "Fournisseurs chargés avec succès.",
+    "supplierFetched": "Fournisseur chargé avec succès.",
+    "supplierCreated": "Fournisseur créé avec succès.",
+    "supplierUpdated": "Fournisseur mis à jour avec succès.",
+    "supplierDeleted": "Fournisseur supprimé avec succès.",
+    "supplierNotFound": "Ce fournisseur est introuvable.",
+    "supplierDuplicate": "Un fournisseur avec cet e-mail ou ce numéro de téléphone existe déjà.",
+    "supplierInUse": "Ce fournisseur ne peut pas être supprimé tant que des achats lui sont associés.",
+    "expenseListed": "Dépenses chargées avec succès.",
+    "expenseFetched": "Dépense chargée avec succès.",
+    "expenseCreated": "Dépense enregistrée avec succès.",
+    "expenseUpdated": "Dépense mise à jour avec succès.",
+    "expenseDeleted": "Dépense supprimée avec succès.",
+    "expenseNotFound": "Cette dépense est introuvable.",
+    "expenseDuplicate": "Cette dépense a déjà été enregistrée."
+  },
+  "profile": {
+    "loaded": "Profil chargé avec succès.",
+    "updated": "Votre profil a été mis à jour avec succès.",
+    "notFound": "Votre profil est introuvable.",
+    "phoneTaken": "Ce numéro de téléphone est déjà utilisé par un autre compte."
+  },
+  "sales": {
+    "listed": "Ventes chargées avec succès.",
+    "fetched": "Vente chargée avec succès.",
+    "created": "Vente finalisée avec succès.",
+    "notFound": "Cette vente est introuvable.",
+    "unknownProduct": "Un ou plusieurs produits de cette vente sont introuvables.",
+    "insufficientStock": "Stock insuffisant pour {{product}} — {{available}} disponible(s), {{requested}} demandé(s).",
+    "alreadyRecorded": "Cette vente a déjà été enregistrée. Le reçu d'origine est renvoyé."
+  },
+  "purchases": {
+    "listed": "Achats chargés avec succès.",
+    "fetched": "Achat chargé avec succès.",
+    "created": "Réception de marchandises enregistrée avec succès.",
+    "notFound": "Cet achat est introuvable.",
+    "unknownProduct": "Un ou plusieurs produits de cet achat sont introuvables.",
+    "unknownSupplier": "Ce fournisseur est introuvable.",
+    "alreadyRecorded": "Cet achat a déjà été enregistré. Le reçu d'origine est renvoyé."
+  },
+  "inventory": {
+    "unitListed": "Unités chargées avec succès.",
+    "unitFetched": "Unité chargée avec succès.",
+    "unitCreated": "Unité créée avec succès.",
+    "unitUpdated": "Unité mise à jour avec succès.",
+    "unitDeleted": "Unité supprimée avec succès.",
+    "unitNotFound": "Cette unité est introuvable.",
+    "unitDuplicate": "Une unité portant ce nom existe déjà.",
+    "movementListed": "Mouvements de stock chargés avec succès."
+  },
+  "users": {
+    "membersListed": "Membres de l'espace de travail chargés avec succès.",
+    "memberNotFound": "Ce membre est introuvable.",
+    "roleAssigned": "Rôle mis à jour avec succès.",
+    "memberRemoved": "Membre retiré de l'espace de travail.",
+    "cannotChangeOwnRole": "Vous ne pouvez pas modifier votre propre rôle.",
+    "cannotRemoveSelf": "Vous ne pouvez pas vous retirer vous-même de l'espace de travail.",
+    "targetOutranksYou": "Vous ne pouvez pas agir sur un {{role}} — son rang est supérieur au vôtre.",
+    "roleAboveYours": "Vous ne pouvez pas attribuer le rôle {{role}} — il est égal ou supérieur au vôtre.",
+    "lastOwner": "Un espace de travail doit conserver au moins un propriétaire.",
+    "permissionsListed": "Autorisations chargées avec succès.",
+    "permissionsUpdated": "Autorisations mises à jour avec succès.",
+    "invitesListed": "Invitations chargées avec succès.",
+    "inviteCreated": "Invitation créée avec succès.",
+    "inviteCancelled": "Invitation annulée.",
+    "inviteNotFound": "Cette invitation est introuvable.",
+    "inviteAlreadyPending": "Une invitation est déjà en attente pour cette adresse.",
+    "alreadyMember": "Cette personne est déjà membre de cet espace de travail.",
+    "activityListed": "Activité chargée avec succès.",
+    "memberProfileUpdated": "Affectation du membre mise à jour avec succès.",
+    "cannotSuspendSelf": "Vous ne pouvez pas suspendre votre propre adhésion."
+  },
+  "branches": {
+    "listed": "Succursales chargées avec succès.",
+    "fetched": "Succursale chargée avec succès.",
+    "created": "Succursale créée avec succès.",
+    "updated": "Succursale mise à jour avec succès.",
+    "deleted": "Succursale supprimée avec succès.",
+    "notFound": "Cette succursale est introuvable.",
+    "duplicate": "Une succursale portant ce nom existe déjà.",
+    "defaultInUse": "Il s'agit de la succursale par défaut. Définissez une autre succursale par défaut avant de la supprimer."
+  }
+}

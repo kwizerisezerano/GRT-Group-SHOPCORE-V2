@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { workspaceApi } from "@/lib/apiClient";
 import { useLandingExperience } from "@/contexts/LandingExperienceContext";
 import { demoBusiness } from "@/data/landingDemoData";
 
@@ -713,47 +713,21 @@ export default function PricingWorkspace() {
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["public-subscription-plan-catalog"],
+    /*
+     * Migrated from a direct Supabase read of public_subscription_plan_catalog
+     * to the backend's /api/workspace/plans, which serves the same catalogue
+     * out of MySQL. This is the data flow the requirements ask for —
+     * Frontend -> API -> Backend -> Database — and it means the landing page
+     * no longer needs Supabase credentials to render its pricing.
+     */
     queryFn: async () => {
-      try {
-        const client = supabase as unknown as {
-          from: (relation: string) => {
-            select: (columns: string) => {
-              order: (
-                column: string,
-                options?: { ascending?: boolean },
-              ) => Promise<{
-                data: unknown[] | null;
-                error: { message?: string } | null;
-              }>;
-            };
-          };
-        };
+      const { plans: rows } = (await workspaceApi.plans()) as {
+        plans: unknown[];
+      };
 
-        const { data: rows, error } = await client
-          .from("public_subscription_plan_catalog")
-          .select("*")
-          .order("display_order", { ascending: true });
-
-        if (error) {
-          throw new Error(
-            error.message || "Unable to load subscription plans.",
-          );
-        }
-
-        const normalised = (rows ?? [])
-          .map(normalisePlan)
-          .filter(Boolean) as SubscriptionPlan[];
-
-        if (normalised.length === 0) {
-          console.warn("No pricing plans found in the catalog.");
-          return [];
-        }
-
-        return normalised;
-      } catch (err) {
-        console.error("Error loading pricing plans:", err);
-        return [];
-      }
+      return (rows ?? [])
+        .map(normalisePlan)
+        .filter(Boolean) as SubscriptionPlan[];
     },
     staleTime: 1000 * 60 * 10,
     retry: 1,

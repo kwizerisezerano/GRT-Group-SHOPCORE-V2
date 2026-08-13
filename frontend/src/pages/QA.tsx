@@ -32,6 +32,7 @@ import {
   Wrench,
   RotateCcw,
   FileText,
+  Sparkles,
   Zap,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

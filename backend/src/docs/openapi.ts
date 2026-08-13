@@ -4,33 +4,188 @@
  * hand is simpler and more reliable than a jsdoc-comment generator - update
  * it alongside auth.routes.ts/workspace.routes.ts as new endpoints land in
  * later migration phases.
+ *
+ * Every response uses the envelope defined in lib/apiResponse.ts. The
+ * `Success`/`Error` component schemas below describe it once; individual
+ * endpoints reference them and describe only what sits inside `data`.
  */
+
+/**
+ * Every CRUD module built on lib/crudModuleFactory.ts exposes the same five
+ * operations with the same status codes, so the paths are generated from one
+ * description of the resource rather than written out five times each.
+ */
+function crudPaths(
+  resource: string,
+  label: string,
+  properties: Record<string, unknown>,
+  tag = "Catalog",
+  note?: string
+): Record<string, unknown> {
+  const schema = { type: "object", properties, ...(note ? { description: note } : {}) };
+  const auth = [{ bearerAuth: [] }];
+
+  const envelope = (dataSchema: unknown) => ({
+    "application/json": {
+      schema: {
+        allOf: [
+          { $ref: "#/components/schemas/Success" },
+          { type: "object", properties: { data: dataSchema } },
+        ],
+      },
+    },
+  });
+
+  const failure = (description: string) => ({
+    description,
+    content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+  });
+
+  return {
+    [`/${resource}`]: {
+      get: {
+        tags: [tag],
+        summary: `List ${resource}`,
+        security: auth,
+        parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
+        responses: {
+          "200": { description: "OK", content: envelope({ type: "array", items: schema }) },
+          "401": failure("Not authenticated"),
+          "403": failure("No active workspace"),
+        },
+      },
+      post: {
+        tags: [tag],
+        summary: `Create a ${label.toLowerCase()}`,
+        security: auth,
+        parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
+        requestBody: { required: true, content: { "application/json": { schema } } },
+        responses: {
+          "201": { description: "Created", content: envelope(schema) },
+          "400": failure("Validation failed; error.details carries per-field messages"),
+          "401": failure("Not authenticated"),
+          "409": failure("Duplicate record; error.details.fields names the conflicting column"),
+        },
+      },
+    },
+    [`/${resource}/{id}`]: {
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        { $ref: "#/components/parameters/LanguageHeader" },
+      ],
+      get: {
+        tags: [tag],
+        summary: `Fetch one ${label.toLowerCase()}`,
+        security: auth,
+        responses: {
+          "200": { description: "OK", content: envelope(schema) },
+          "404": failure("Not found, or belongs to another tenant"),
+        },
+      },
+      patch: {
+        tags: [tag],
+        summary: `Update a ${label.toLowerCase()}`,
+        security: auth,
+        requestBody: { required: true, content: { "application/json": { schema } } },
+        responses: {
+          "200": { description: "Updated", content: envelope(schema) },
+          "400": failure("Validation failed"),
+          "404": failure("Not found, or belongs to another tenant"),
+          "409": failure("Duplicate record"),
+        },
+      },
+      delete: {
+        tags: [tag],
+        summary: `Delete a ${label.toLowerCase()}`,
+        security: auth,
+        responses: {
+          "200": { description: "Deleted", content: envelope({ nullable: true }) },
+          "404": failure("Not found, or belongs to another tenant"),
+          "409": failure("Still referenced by other records"),
+        },
+      },
+    },
+  };
+}
+
 export const openApiSpec = {
   openapi: "3.0.3",
   info: {
     title: "ShopCore API",
     version: "0.1.0",
     description:
-      "Custom backend replacing Supabase, module by module. This phase covers authentication and workspace/tenant bootstrap.",
+      "Custom backend replacing Supabase, module by module. This phase covers authentication and workspace/tenant bootstrap.\n\n" +
+      "**Response envelope** - every endpoint, success or failure, answers with the same shape:\n\n" +
+      "```json\n" +
+      '{ "success": true,  "message": "Signed in successfully.", "data": { } }\n' +
+      '{ "success": false, "message": "Invalid email or password.", "error": { "code": "invalid_credentials" } }\n' +
+      "```\n\n" +
+      "**Languages** - `message` is translated server-side. Choose a language with the `X-Language` " +
+      "header, a `?lang=` query parameter, or standard `Accept-Language` negotiation. Supported: " +
+      "`en`, `fr`, `es`, `sw`, `rw`. The negotiated language is echoed in the `Content-Language` " +
+      "response header.",
   },
   servers: [{ url: "/api" }],
   tags: [
     { name: "Auth", description: "Signup, login, session, password reset" },
     { name: "Workspace", description: "Tenant/workspace bootstrap and subscription plan catalog" },
+    { name: "Catalog", description: "Products, categories and brands. All tenant-scoped." },
+    { name: "CRM", description: "Customers, suppliers and expenses. Personal data is encrypted at rest." },
+    { name: "Profile", description: "The signed-in user's own editable profile." },
   ],
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
     },
+    parameters: {
+      LanguageHeader: {
+        name: "X-Language",
+        in: "header",
+        required: false,
+        description: "Language for the response `message`. Overridden by `?lang=`, overrides `Accept-Language`.",
+        schema: { type: "string", enum: ["en", "fr", "es", "sw", "rw"] },
+      },
+    },
     schemas: {
+      Success: {
+        type: "object",
+        required: ["success", "message", "data"],
+        properties: {
+          success: { type: "boolean", enum: [true] },
+          message: {
+            type: "string",
+            description: "Human-readable outcome, already translated. Safe to show a user verbatim.",
+            example: "Signed in successfully.",
+          },
+          data: {
+            nullable: true,
+            description: "Endpoint payload, or null for endpoints that return no body.",
+          },
+        },
+      },
       Error: {
         type: "object",
+        required: ["success", "message", "error"],
         properties: {
+          success: { type: "boolean", enum: [false] },
+          message: {
+            type: "string",
+            description: "Human-readable explanation, already translated.",
+            example: "An account with this email already exists.",
+          },
           error: {
             type: "object",
+            required: ["code"],
             properties: {
-              code: { type: "string" },
-              message: { type: "string" },
+              code: {
+                type: "string",
+                description: "Stable machine-readable identifier; branch on this, not on the message.",
+                example: "invalid_credentials",
+              },
+              details: {
+                description: "Present on validation failures: Zod `flatten()` output with per-field errors.",
+                example: { formErrors: [], fieldErrors: { email: ["Invalid email"] } },
+              },
             },
           },
         },
@@ -53,6 +208,99 @@ export const openApiSpec = {
     },
   },
   paths: {
+    ...crudPaths("customers", "Customer", {
+      name: { type: "string", maxLength: 191, example: "Aline Mukamana" },
+      phone: { type: "string", nullable: true, example: "+250788111222" },
+      email: { type: "string", format: "email", nullable: true },
+      address: { type: "string", nullable: true },
+      loyalty_points: { type: "integer", minimum: 0 },
+      status: { type: "string", enum: ["active", "inactive"] },
+    }, "CRM", "Name, phone, email and address are encrypted at rest with AES-256-GCM. Email and phone are additionally indexed by a keyed HMAC so they stay unique per tenant; those hashes are never returned."),
+    ...crudPaths("suppliers", "Supplier", {
+      name: { type: "string", maxLength: 191, example: "Kigali Wholesale" },
+      phone: { type: "string", nullable: true },
+      email: { type: "string", format: "email", nullable: true },
+      address: { type: "string", nullable: true },
+    }, "CRM", "Same encryption treatment as customers. Deleting a supplier with recorded purchases returns 409."),
+    ...crudPaths("expenses", "Expense", {
+      title: { type: "string", maxLength: 191, example: "Generator fuel" },
+      amount: { type: "number", minimum: 0, example: 45000 },
+      category: { type: "string", nullable: true, example: "Utilities" },
+      notes: { type: "string", nullable: true },
+    }, "CRM"),
+
+    "/profile": {
+      get: {
+        tags: ["Profile"],
+        summary: "Fetch the signed-in user's profile",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/LanguageHeader" }],
+        responses: {
+          "200": { description: "OK" },
+          "401": { description: "Not authenticated" },
+          "404": { description: "No profile for this user" },
+        },
+      },
+      patch: {
+        tags: ["Profile"],
+        summary: "Update the signed-in user's profile",
+        description:
+          "Accepts either display_name or displayName. The display name is mirrored onto the user record that /auth/me reads, so the two cannot disagree.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  display_name: { type: "string", maxLength: 191 },
+                  phone: { type: "string", nullable: true },
+                  avatar_url: { type: "string", format: "uri", nullable: true },
+                  language: { type: "string", enum: ["en", "fr", "es", "sw", "rw"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Updated" },
+          "400": { description: "Validation failed" },
+          "409": { description: "Phone number already used by another account" },
+        },
+      },
+    },
+
+    ...crudPaths("categories", "Category", {
+      name: { type: "string", maxLength: 191, example: "Beverages" },
+      description: { type: "string", nullable: true },
+    }),
+    ...crudPaths("brands", "Brand", {
+      name: { type: "string", maxLength: 191, example: "Inyange" },
+    }),
+    ...crudPaths("products", "Product", {
+      name: { type: "string", maxLength: 191, example: "Inyange Milk 1L" },
+      sku: { type: "string", nullable: true, maxLength: 64, example: "INY-MLK-1L" },
+      barcode: { type: "string", nullable: true, maxLength: 64, example: "6001234567890" },
+      category_id: { type: "string", format: "uuid", nullable: true },
+      brand_id: { type: "string", format: "uuid", nullable: true },
+      cost_price: { type: "number", minimum: 0, example: 800 },
+      selling_price: { type: "number", minimum: 0, example: 1200 },
+      stock_quantity: { type: "integer", minimum: 0, example: 48 },
+      min_stock_level: { type: "integer", minimum: 0, example: 10 },
+      tax_rate: { type: "number", minimum: 0, maximum: 100 },
+      unit: { type: "string", nullable: true, example: "pcs" },
+      image_url: { type: "string", nullable: true },
+      description: { type: "string", nullable: true },
+      status: {
+        type: "string",
+        enum: ["active", "inactive", "discontinued", "out_of_stock", "low_stock"],
+        description:
+          "out_of_stock and low_stock are derived server-side from stock_quantity vs min_stock_level; sending them has no effect. inactive and discontinued are honoured as sent.",
+      },
+      expiry_date: { type: "string", format: "date", nullable: true },
+    }),
+
     "/health": {
       get: {
         tags: ["Auth"],
@@ -74,9 +322,9 @@ export const openApiSpec = {
                 properties: {
                   email: { type: "string", format: "email" },
                   password: { type: "string", minLength: 8 },
-                  displayName: { type: "string", description: "AES-encrypted client-side before it reaches this API" },
+                  displayName: { type: "string", description: "Plaintext over TLS; encrypted server-side with AES-256-GCM before storage" },
                   businessName: { type: "string" },
-                  businessPhone: { type: "string", description: "AES-encrypted client-side before it reaches this API" },
+                  businessPhone: { type: "string", description: "Plaintext over TLS; encrypted server-side with AES-256-GCM before storage" },
                   businessLocation: { type: "string" },
                   businessType: { type: "string" },
                   teamSize: { type: "string" },

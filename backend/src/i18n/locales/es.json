@@ -1,0 +1,196 @@
+{
+  "auth": {
+    "signupSuccess": "Su cuenta y su espacio de trabajo se crearon correctamente.",
+    "emailExists": "Ya existe una cuenta con este correo electrónico.",
+    "phoneExists": "Ya existe una cuenta con este número de teléfono.",
+    "loginSuccess": "Sesión iniciada correctamente.",
+    "invalidCredentials": "Correo electrónico o contraseña incorrectos.",
+    "logoutSuccess": "Sesión cerrada correctamente.",
+    "tokenRefreshed": "Sesión actualizada correctamente.",
+    "invalidRefreshToken": "Su sesión ha expirado. Vuelva a iniciar sesión.",
+    "profileLoaded": "Datos de la cuenta cargados correctamente.",
+    "missingToken": "Debe iniciar sesión para realizar esta acción.",
+    "invalidToken": "Su sesión no es válida o ha expirado. Vuelva a iniciar sesión.",
+    "passwordResetRequested": "Si ese correo electrónico está registrado, se ha enviado un enlace de restablecimiento.",
+    "passwordResetCompleted": "Su contraseña se actualizó correctamente. Inicie sesión con su nueva contraseña.",
+    "invalidResetToken": "Este enlace de restablecimiento no es válido o ha expirado. Solicite uno nuevo.",
+    "noWorkspace": "No es miembro de este espacio de trabajo.",
+    "missingPermission": "No tiene permiso para hacer eso. Se requiere: {{permission}}.",
+    "membershipSuspended": "Tu acceso a este espacio de trabajo está suspendido. Pide a un administrador que lo restablezca."
+  },
+  "workspace": {
+    "plansLoaded": "Planes de suscripción cargados correctamente.",
+    "paymentMethodsLoaded": "Métodos de pago cargados correctamente.",
+    "created": "Espacio de trabajo creado correctamente.",
+    "requiresTenant": "Esta acción requiere un espacio de trabajo activo.",
+    "invalidPlan": "El plan de suscripción seleccionado no es válido o ya no está disponible.",
+    "invalidPrice": "No se encontró un precio activo para el plan y el ciclo de facturación seleccionados.",
+    "invalidPaymentMethod": "El método de pago seleccionado no se reconoce."
+  },
+  "common": {
+    "created": "Registro creado correctamente.",
+    "updated": "Registro actualizado correctamente.",
+    "deleted": "Registro eliminado correctamente.",
+    "loaded": "Registros cargados correctamente.",
+    "healthy": "El servicio funciona con normalidad."
+  },
+  "error": {
+    "validation": "Parte de la información introducida no es válida. Revise los campos señalados.",
+    "notFound": "No se encontró el registro solicitado.",
+    "routeNotFound": "No existe ninguna ruta para {{method}} {{path}}.",
+    "unauthorized": "No está autorizado para realizar esta acción.",
+    "forbidden": "No tiene permiso para realizar esta acción.",
+    "conflict": "Este registro ya existe.",
+    "internal": "Se produjo un error por nuestra parte. Inténtelo de nuevo."
+  },
+  "email": {
+    "common": {
+      "greeting": "Hola {{name}}:",
+      "linkFallback": "Si el botón no funciona, copie este enlace en su navegador:",
+      "footer": "Este es un mensaje automático de ShopCore. Por favor, no responda a él.",
+      "ignore": "Si usted no solicitó esto, puede ignorar este correo electrónico."
+    },
+    "accountCreated": {
+      "subject": "Bienvenido a ShopCore",
+      "heading": "Su espacio de trabajo está listo",
+      "body": "Su cuenta de ShopCore y el espacio de trabajo {{workspace}} se crearon correctamente. Ya puede iniciar sesión y comenzar a configurar su negocio.",
+      "cta": "Abrir ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Restablezca su contraseña de ShopCore",
+      "heading": "Restablezca su contraseña",
+      "body": "Recibimos una solicitud para restablecer la contraseña de su cuenta de ShopCore. Elija una nueva con el botón de abajo. Este enlace caduca en una hora.",
+      "cta": "Restablecer contraseña"
+    },
+    "passwordChanged": {
+      "subject": "Su contraseña de ShopCore fue cambiada",
+      "heading": "Contraseña cambiada",
+      "body": "La contraseña de su cuenta de ShopCore se cambió correctamente. Se cerró la sesión en todos los demás dispositivos. Si no fue usted, restablezca su contraseña de inmediato y comuníquese con el soporte.",
+      "cta": "Revisar la seguridad de la cuenta"
+    },
+    "subscriptionActivated": {
+      "subject": "Su suscripción a ShopCore está activa",
+      "heading": "Suscripción activada",
+      "body": "Su suscripción {{plan}} ya está activa con un ciclo de facturación {{cycle}} para el espacio de trabajo {{workspace}}. Gracias por elegir ShopCore.",
+      "cta": "Ver facturación"
+    }
+  },
+  "catalog": {
+    "categoryListed": "Categorías cargadas correctamente.",
+    "categoryFetched": "Categoría cargada correctamente.",
+    "categoryCreated": "Categoría creada correctamente.",
+    "categoryUpdated": "Categoría actualizada correctamente.",
+    "categoryDeleted": "Categoría eliminada correctamente.",
+    "categoryNotFound": "No se encontró esa categoría.",
+    "categoryDuplicate": "Ya existe una categoría con este nombre.",
+    "categoryInUse": "Esta categoría no se puede eliminar mientras tenga productos asignados.",
+    "brandListed": "Marcas cargadas correctamente.",
+    "brandFetched": "Marca cargada correctamente.",
+    "brandCreated": "Marca creada correctamente.",
+    "brandUpdated": "Marca actualizada correctamente.",
+    "brandDeleted": "Marca eliminada correctamente.",
+    "brandNotFound": "No se encontró esa marca.",
+    "brandDuplicate": "Ya existe una marca con este nombre.",
+    "brandInUse": "Esta marca no se puede eliminar mientras tenga productos asignados.",
+    "productListed": "Productos cargados correctamente.",
+    "productFetched": "Producto cargado correctamente.",
+    "productCreated": "Producto creado correctamente.",
+    "productUpdated": "Producto actualizado correctamente.",
+    "productDeleted": "Producto eliminado correctamente.",
+    "productNotFound": "No se encontró ese producto.",
+    "productDuplicate": "Ya existe un producto con este SKU o código de barras.",
+    "invalidCategory": "La categoría seleccionada no existe.",
+    "invalidBrand": "La marca seleccionada no existe.",
+    "priceBelowCost": "El precio de venta no puede ser inferior al precio de costo."
+  },
+  "crm": {
+    "customerListed": "Clientes cargados correctamente.",
+    "customerFetched": "Cliente cargado correctamente.",
+    "customerCreated": "Cliente creado correctamente.",
+    "customerUpdated": "Cliente actualizado correctamente.",
+    "customerDeleted": "Cliente eliminado correctamente.",
+    "customerNotFound": "No se encontró ese cliente.",
+    "customerDuplicate": "Ya existe un cliente con este correo electrónico o número de teléfono.",
+    "supplierListed": "Proveedores cargados correctamente.",
+    "supplierFetched": "Proveedor cargado correctamente.",
+    "supplierCreated": "Proveedor creado correctamente.",
+    "supplierUpdated": "Proveedor actualizado correctamente.",
+    "supplierDeleted": "Proveedor eliminado correctamente.",
+    "supplierNotFound": "No se encontró ese proveedor.",
+    "supplierDuplicate": "Ya existe un proveedor con este correo electrónico o número de teléfono.",
+    "supplierInUse": "Este proveedor no se puede eliminar mientras tenga compras registradas.",
+    "expenseListed": "Gastos cargados correctamente.",
+    "expenseFetched": "Gasto cargado correctamente.",
+    "expenseCreated": "Gasto registrado correctamente.",
+    "expenseUpdated": "Gasto actualizado correctamente.",
+    "expenseDeleted": "Gasto eliminado correctamente.",
+    "expenseNotFound": "No se encontró ese gasto.",
+    "expenseDuplicate": "Este gasto ya se ha registrado."
+  },
+  "profile": {
+    "loaded": "Perfil cargado correctamente.",
+    "updated": "Su perfil se actualizó correctamente.",
+    "notFound": "No se encontró su perfil.",
+    "phoneTaken": "Ese número de teléfono ya lo usa otra cuenta."
+  },
+  "sales": {
+    "listed": "Ventas cargadas correctamente.",
+    "fetched": "Venta cargada correctamente.",
+    "created": "Venta completada correctamente.",
+    "notFound": "No se encontró esa venta.",
+    "unknownProduct": "No se encontraron uno o más productos de esta venta.",
+    "insufficientStock": "Stock insuficiente de {{product}}: {{available}} disponible(s), {{requested}} solicitado(s).",
+    "alreadyRecorded": "Esta venta ya fue registrada. Se devuelve el recibo original."
+  },
+  "purchases": {
+    "listed": "Compras cargadas correctamente.",
+    "fetched": "Compra cargada correctamente.",
+    "created": "Recepción de mercancía registrada correctamente.",
+    "notFound": "No se encontró esa compra.",
+    "unknownProduct": "No se encontraron uno o más productos de esta compra.",
+    "unknownSupplier": "No se encontró ese proveedor.",
+    "alreadyRecorded": "Esta compra ya fue registrada. Se devuelve el recibo original."
+  },
+  "inventory": {
+    "unitListed": "Unidades cargadas correctamente.",
+    "unitFetched": "Unidad cargada correctamente.",
+    "unitCreated": "Unidad creada correctamente.",
+    "unitUpdated": "Unidad actualizada correctamente.",
+    "unitDeleted": "Unidad eliminada correctamente.",
+    "unitNotFound": "No se encontró esa unidad.",
+    "unitDuplicate": "Ya existe una unidad con este nombre.",
+    "movementListed": "Movimientos de stock cargados correctamente."
+  },
+  "users": {
+    "membersListed": "Miembros del espacio de trabajo cargados correctamente.",
+    "memberNotFound": "No se encontró ese miembro.",
+    "roleAssigned": "Rol actualizado correctamente.",
+    "memberRemoved": "Miembro eliminado del espacio de trabajo.",
+    "cannotChangeOwnRole": "No puede cambiar su propio rol.",
+    "cannotRemoveSelf": "No puede eliminarse a sí mismo del espacio de trabajo.",
+    "targetOutranksYou": "No puede actuar sobre un {{role}}: tiene un rango superior al suyo.",
+    "roleAboveYours": "No puede asignar el rol {{role}}: es igual o superior al suyo.",
+    "lastOwner": "Un espacio de trabajo debe conservar al menos un propietario.",
+    "permissionsListed": "Permisos cargados correctamente.",
+    "permissionsUpdated": "Permisos actualizados correctamente.",
+    "invitesListed": "Invitaciones cargadas correctamente.",
+    "inviteCreated": "Invitación creada correctamente.",
+    "inviteCancelled": "Invitación cancelada.",
+    "inviteNotFound": "No se encontró esa invitación.",
+    "inviteAlreadyPending": "Ya hay una invitación pendiente para esta dirección.",
+    "alreadyMember": "Esa persona ya es miembro de este espacio de trabajo.",
+    "activityListed": "Actividad cargada correctamente.",
+    "memberProfileUpdated": "Asignación del miembro actualizada correctamente.",
+    "cannotSuspendSelf": "No puedes suspender tu propia membresía."
+  },
+  "branches": {
+    "listed": "Sucursales cargadas correctamente.",
+    "fetched": "Sucursal cargada correctamente.",
+    "created": "Sucursal creada correctamente.",
+    "updated": "Sucursal actualizada correctamente.",
+    "deleted": "Sucursal eliminada correctamente.",
+    "notFound": "No se encontró esa sucursal.",
+    "duplicate": "Ya existe una sucursal con este nombre.",
+    "defaultInUse": "Esta es la sucursal predeterminada. Establece otra como predeterminada antes de eliminarla."
+  }
+}

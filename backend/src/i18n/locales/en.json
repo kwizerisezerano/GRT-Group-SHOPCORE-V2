@@ -1,0 +1,196 @@
+{
+  "auth": {
+    "signupSuccess": "Your account and workspace were created successfully.",
+    "emailExists": "An account with this email already exists.",
+    "phoneExists": "An account with this phone number already exists.",
+    "loginSuccess": "Signed in successfully.",
+    "invalidCredentials": "Invalid email or password.",
+    "logoutSuccess": "Signed out successfully.",
+    "tokenRefreshed": "Session refreshed successfully.",
+    "invalidRefreshToken": "Your session has expired. Please sign in again.",
+    "profileLoaded": "Account details loaded successfully.",
+    "missingToken": "You must be signed in to perform this action.",
+    "invalidToken": "Your session is invalid or has expired. Please sign in again.",
+    "passwordResetRequested": "If that email is registered, a reset link has been sent to it.",
+    "passwordResetCompleted": "Your password was updated successfully. Please sign in with your new password.",
+    "invalidResetToken": "This password reset link is invalid or has expired. Please request a new one.",
+    "noWorkspace": "You are not a member of this workspace.",
+    "missingPermission": "You do not have permission to do that. Required: {{permission}}.",
+    "membershipSuspended": "Your access to this workspace is suspended. Ask an administrator to restore it."
+  },
+  "workspace": {
+    "plansLoaded": "Subscription plans loaded successfully.",
+    "paymentMethodsLoaded": "Payment methods loaded successfully.",
+    "created": "Workspace created successfully.",
+    "requiresTenant": "This action requires an active workspace.",
+    "invalidPlan": "The selected subscription plan is invalid or no longer available.",
+    "invalidPrice": "No active price was found for the selected plan and billing cycle.",
+    "invalidPaymentMethod": "The selected payment method is not recognised."
+  },
+  "common": {
+    "created": "Record created successfully.",
+    "updated": "Record updated successfully.",
+    "deleted": "Record deleted successfully.",
+    "loaded": "Records loaded successfully.",
+    "healthy": "The service is running normally."
+  },
+  "error": {
+    "validation": "Some of the information you entered is invalid. Please check the highlighted fields.",
+    "notFound": "The requested record could not be found.",
+    "routeNotFound": "No route exists for {{method}} {{path}}.",
+    "unauthorized": "You are not authorised to perform this action.",
+    "forbidden": "You do not have permission to perform this action.",
+    "conflict": "This record already exists.",
+    "internal": "Something went wrong on our side. Please try again."
+  },
+  "email": {
+    "common": {
+      "greeting": "Hello {{name}},",
+      "linkFallback": "If the button does not work, copy this link into your browser:",
+      "footer": "This is an automated message from ShopCore. Please do not reply to it.",
+      "ignore": "If you did not request this, you can safely ignore this email."
+    },
+    "accountCreated": {
+      "subject": "Welcome to ShopCore",
+      "heading": "Your workspace is ready",
+      "body": "Your ShopCore account and the workspace {{workspace}} were created successfully. You can sign in now and start setting up your business.",
+      "cta": "Open ShopCore"
+    },
+    "passwordReset": {
+      "subject": "Reset your ShopCore password",
+      "heading": "Reset your password",
+      "body": "We received a request to reset the password for your ShopCore account. Choose a new one using the button below. This link expires in one hour.",
+      "cta": "Reset password"
+    },
+    "passwordChanged": {
+      "subject": "Your ShopCore password was changed",
+      "heading": "Password changed",
+      "body": "The password for your ShopCore account was changed successfully. Every other device has been signed out. If this was not you, reset your password immediately and contact support.",
+      "cta": "Review account security"
+    },
+    "subscriptionActivated": {
+      "subject": "Your ShopCore subscription is active",
+      "heading": "Subscription activated",
+      "body": "Your {{plan}} subscription is now active on a {{cycle}} billing cycle for the workspace {{workspace}}. Thank you for choosing ShopCore.",
+      "cta": "View billing"
+    }
+  },
+  "catalog": {
+    "categoryListed": "Categories loaded successfully.",
+    "categoryFetched": "Category loaded successfully.",
+    "categoryCreated": "Category created successfully.",
+    "categoryUpdated": "Category updated successfully.",
+    "categoryDeleted": "Category deleted successfully.",
+    "categoryNotFound": "That category could not be found.",
+    "categoryDuplicate": "A category with this name already exists.",
+    "categoryInUse": "This category cannot be deleted while products are still assigned to it.",
+    "brandListed": "Brands loaded successfully.",
+    "brandFetched": "Brand loaded successfully.",
+    "brandCreated": "Brand created successfully.",
+    "brandUpdated": "Brand updated successfully.",
+    "brandDeleted": "Brand deleted successfully.",
+    "brandNotFound": "That brand could not be found.",
+    "brandDuplicate": "A brand with this name already exists.",
+    "brandInUse": "This brand cannot be deleted while products are still assigned to it.",
+    "productListed": "Products loaded successfully.",
+    "productFetched": "Product loaded successfully.",
+    "productCreated": "Product created successfully.",
+    "productUpdated": "Product updated successfully.",
+    "productDeleted": "Product deleted successfully.",
+    "productNotFound": "That product could not be found.",
+    "productDuplicate": "A product with this SKU or barcode already exists.",
+    "invalidCategory": "The selected category does not exist.",
+    "invalidBrand": "The selected brand does not exist.",
+    "priceBelowCost": "The selling price cannot be lower than the cost price."
+  },
+  "crm": {
+    "customerListed": "Customers loaded successfully.",
+    "customerFetched": "Customer loaded successfully.",
+    "customerCreated": "Customer created successfully.",
+    "customerUpdated": "Customer updated successfully.",
+    "customerDeleted": "Customer deleted successfully.",
+    "customerNotFound": "That customer could not be found.",
+    "customerDuplicate": "A customer with this email or phone number already exists.",
+    "supplierListed": "Suppliers loaded successfully.",
+    "supplierFetched": "Supplier loaded successfully.",
+    "supplierCreated": "Supplier created successfully.",
+    "supplierUpdated": "Supplier updated successfully.",
+    "supplierDeleted": "Supplier deleted successfully.",
+    "supplierNotFound": "That supplier could not be found.",
+    "supplierDuplicate": "A supplier with this email or phone number already exists.",
+    "supplierInUse": "This supplier cannot be deleted while purchases are still recorded against it.",
+    "expenseListed": "Expenses loaded successfully.",
+    "expenseFetched": "Expense loaded successfully.",
+    "expenseCreated": "Expense recorded successfully.",
+    "expenseUpdated": "Expense updated successfully.",
+    "expenseDeleted": "Expense deleted successfully.",
+    "expenseNotFound": "That expense could not be found.",
+    "expenseDuplicate": "This expense has already been recorded."
+  },
+  "profile": {
+    "loaded": "Profile loaded successfully.",
+    "updated": "Your profile was updated successfully.",
+    "notFound": "Your profile could not be found.",
+    "phoneTaken": "That phone number is already used by another account."
+  },
+  "sales": {
+    "listed": "Sales loaded successfully.",
+    "fetched": "Sale loaded successfully.",
+    "created": "Sale completed successfully.",
+    "notFound": "That sale could not be found.",
+    "unknownProduct": "One or more products in this sale could not be found.",
+    "insufficientStock": "Not enough stock for {{product}} — {{available}} available, {{requested}} requested.",
+    "alreadyRecorded": "This sale was already recorded. Returning the original receipt."
+  },
+  "purchases": {
+    "listed": "Purchases loaded successfully.",
+    "fetched": "Purchase loaded successfully.",
+    "created": "Goods receipt recorded successfully.",
+    "notFound": "That purchase could not be found.",
+    "unknownProduct": "One or more products in this purchase could not be found.",
+    "unknownSupplier": "That supplier could not be found.",
+    "alreadyRecorded": "This purchase was already recorded. Returning the original receipt."
+  },
+  "inventory": {
+    "unitListed": "Units loaded successfully.",
+    "unitFetched": "Unit loaded successfully.",
+    "unitCreated": "Unit created successfully.",
+    "unitUpdated": "Unit updated successfully.",
+    "unitDeleted": "Unit deleted successfully.",
+    "unitNotFound": "That unit could not be found.",
+    "unitDuplicate": "A unit with this name already exists.",
+    "movementListed": "Stock movements loaded successfully."
+  },
+  "users": {
+    "membersListed": "Workspace members loaded successfully.",
+    "memberNotFound": "That member could not be found.",
+    "roleAssigned": "Role updated successfully.",
+    "memberRemoved": "Member removed from the workspace.",
+    "cannotChangeOwnRole": "You cannot change your own role.",
+    "cannotRemoveSelf": "You cannot remove yourself from the workspace.",
+    "targetOutranksYou": "You cannot act on a {{role}} — they rank above you.",
+    "roleAboveYours": "You cannot assign the {{role}} role — it is at or above your own.",
+    "lastOwner": "A workspace must keep at least one owner.",
+    "permissionsListed": "Permissions loaded successfully.",
+    "permissionsUpdated": "Permissions updated successfully.",
+    "invitesListed": "Invitations loaded successfully.",
+    "inviteCreated": "Invitation created successfully.",
+    "inviteCancelled": "Invitation cancelled.",
+    "inviteNotFound": "That invitation could not be found.",
+    "inviteAlreadyPending": "An invitation is already pending for this address.",
+    "alreadyMember": "That person is already a member of this workspace.",
+    "activityListed": "Activity loaded successfully.",
+    "memberProfileUpdated": "Member posting updated successfully.",
+    "cannotSuspendSelf": "You cannot suspend your own membership."
+  },
+  "branches": {
+    "listed": "Branches loaded successfully.",
+    "fetched": "Branch loaded successfully.",
+    "created": "Branch created successfully.",
+    "updated": "Branch updated successfully.",
+    "deleted": "Branch deleted successfully.",
+    "notFound": "That branch could not be found.",
+    "duplicate": "A branch with this name already exists.",
+    "defaultInUse": "This is the default branch. Make another branch the default before deleting it."
+  }
+}

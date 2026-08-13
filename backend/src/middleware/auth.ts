@@ -14,7 +14,7 @@ declare global {
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    throw HttpError.unauthorized("Missing bearer token");
+    throw HttpError.unauthorized("auth.missingToken", { code: "missing_token" });
   }
 
   try {
@@ -22,6 +22,6 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
     req.user = { id: payload.sub, tenantId: payload.tenantId, role: payload.role };
     next();
   } catch {
-    throw HttpError.unauthorized("Invalid or expired access token");
+    throw HttpError.unauthorized("auth.invalidToken", { code: "invalid_token" });
   }
 }

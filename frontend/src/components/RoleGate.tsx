@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const ROUTE_MODULES: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -46,6 +47,7 @@ function getModuleFromPath(pathname: string) {
 export function RoleGate({ children }: { children: ReactNode }) {
   const { bootstrapping, loading, user, session, role, tenantId, canViewModule } =
     useAuth();
+  const { canSeeModule, permissions } = usePermissions();
   const location = useLocation();
 
   if (loading || bootstrapping) {
@@ -74,6 +76,39 @@ export function RoleGate({ children }: { children: ReactNode }) {
   }
 
   const module = getModuleFromPath(location.pathname);
+
+  /*
+   * Two gates, and they answer different questions.
+   *
+   * `canSeeModule` is the user's own role: does a cashier get the purchases
+   * screen at all? It comes from the same permission set the API enforces, so
+   * the page and the request agree — a screen that opens and then refuses
+   * every call is worse than one that says no up front.
+   *
+   * `canViewModule` is the *subscription*: is this module in the plan the
+   * workspace pays for? A permission the plan does not include is not a
+   * permission, so both have to pass.
+   *
+   * Permissions being empty means they are not known yet — a first paint, or
+   * an offline start with nothing cached. Falling through to the plan check
+   * rather than blocking avoids flashing "no permission" at someone who has
+   * it; the API refuses anything they should not have in any case.
+   */
+  const roleAllows = permissions.length === 0 || canSeeModule(module ?? "");
+
+  if (module && !roleAllows) {
+    return (
+      <div className="mx-auto mt-24 max-w-md rounded-lg border bg-card p-6 text-center">
+        <ShieldAlert className="mx-auto mb-3 h-10 w-10 text-destructive" />
+        <h2 className="mb-1 text-lg font-semibold">No permission</h2>
+        <p className="text-sm text-muted-foreground">
+          Your role (<span className="font-medium">{role}</span>) does not
+          allow access to this page. Ask a workspace administrator if you need
+          it.
+        </p>
+      </div>
+    );
+  }
 
   if (module && !canViewModule(module)) {
     return (

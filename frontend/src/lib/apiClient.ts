@@ -1,3 +1,7 @@
+import { LANGUAGE_STORAGE_KEY } from "@/i18n/storage";
+import { apiBaseUrl } from "@/lib/apiBase";
+import { reportApiReachable, reportApiUnreachable } from "@/lib/connectivity";
+
 const TOKENS_KEY = "shopcore_auth_tokens";
 
 export type ApiUser = {
@@ -77,43 +81,111 @@ function toApiSession(raw: {
 export class ApiError extends Error {
   status: number;
   code: string;
+  /**
+   * Field-level validation detail, when the backend sent any. Shaped like
+   * Zod's `flatten()` output: `{ formErrors, fieldErrors }`.
+   */
+  details?: unknown;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, details?: unknown) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
-function apiBaseUrl(): string {
-  const configured = import.meta.env.VITE_API_URL as string | undefined;
-  return configured ? configured.replace(/\/$/, "") : "";
+/**
+ * Language the API should answer in. Read from the same key the app's
+ * LanguageContext persists to, so backend messages arrive in whatever the
+ * user picked in the UI.
+ */
+function currentLanguage(): string | null {
+  try {
+    return localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
 }
+
+/**
+ * The most recent human-readable message the backend sent for a successful
+ * call. Populated on every request so a caller that wants to surface the
+ * backend's own wording (rather than inventing its own) can read it right
+ * after awaiting.
+ */
+export let lastSuccessMessage: string | null = null;
 
 async function rawRequest(path: string, options: { method: string; body?: unknown; auth?: boolean }) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  const language = currentLanguage();
+  if (language) headers["X-Language"] = language;
 
   if (options.auth) {
     const stored = readStoredTokens();
     if (stored?.accessToken) headers.Authorization = `Bearer ${stored.accessToken}`;
   }
 
-  const response = await fetch(`${apiBaseUrl()}/api${path}`, {
-    method: options.method,
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}/api${path}`, {
+      method: options.method,
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (cause) {
+    /*
+     * fetch only rejects when the request never reached a server: the API is
+     * down, the dev proxy has nothing to forward to, or the network is gone.
+     * The browser reports that as an opaque failed/CORS request with no
+     * status, which reads as a frontend bug and sends people looking in the
+     * wrong place. Say what actually happened instead.
+     *
+     * Reported to the connectivity monitor rather than acted on here. Real
+     * traffic is the best evidence there is about whether the API is up — far
+     * better than a timer — but one failed request is not proof, and it is the
+     * monitor's job to decide how many it takes.
+     */
+    reportApiUnreachable();
 
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const code = data?.error?.code ?? "unknown_error";
-    const message = data?.error?.message ?? "Request failed";
-    throw new ApiError(response.status, code, message);
+    throw new ApiError(
+      0,
+      "api_unreachable",
+      navigator.onLine === false
+        ? "You appear to be offline. Changes will sync when the connection returns."
+        : "Cannot reach the ShopCore API. Make sure the backend is running — see docs/LOCAL-DEV.md.",
+      { cause: String(cause) },
+    );
   }
 
-  return data;
+  // A reply of any kind — including a 4xx — proves the API was reached.
+  reportApiReachable();
+
+  const text = await response.text();
+  const body = text ? JSON.parse(text) : null;
+
+  /*
+   * The API answers in one envelope for every route:
+   *   success  { success: true,  message, data }
+   *   failure  { success: false, message, error: { code, details? } }
+   *
+   * Unwrapping here means call sites keep working with the payload directly
+   * and never have to reach through `.data` themselves, and the backend's
+   * already-translated message is what surfaces to the user.
+   */
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      body?.error?.code ?? "unknown_error",
+      body?.message ?? "Request failed",
+      body?.error?.details,
+    );
+  }
+
+  lastSuccessMessage = typeof body?.message === "string" ? body.message : null;
+
+  return body?.data ?? null;
 }
 
 /**
@@ -138,13 +210,13 @@ export const authApi = {
   async signup(input: {
     email: string;
     password: string;
-    displayName: string; // already AES-encrypted client-side, see src/lib/encryption.ts
+    displayName: string; // plaintext; encrypted server-side with AES-256-GCM
     businessName: string;
-    businessPhone?: string; // already AES-encrypted client-side
+    businessPhone?: string; // plaintext; encrypted server-side with AES-256-GCM
     businessLocation?: string;
     businessType?: string;
     teamSize?: string;
-    language?: "en" | "fr" | "rw" | "sw";
+    language?: "en" | "fr" | "es" | "sw" | "rw";
     planCode: string;
     billingCycle: "monthly" | "six_months" | "annual";
     paymentMethod?: string;
@@ -214,6 +286,28 @@ export const authApi = {
     }>;
   },
 
+  /**
+   * Whether this device holds a session the API will actually accept.
+   *
+   * Not the same question as "are there tokens in localStorage": an expired or
+   * revoked token is still a token. This calls `/auth/me`, which goes through
+   * `request()` and so refreshes transparently on a 401 — so a true answer
+   * means the API was reached *and* the session works, which is exactly the
+   * precondition for replaying an offline queue.
+   *
+   * Throws nothing. Being unable to answer is itself an answer of no.
+   */
+  async hasValidSession(): Promise<boolean> {
+    if (!readStoredTokens()?.accessToken) return false;
+
+    try {
+      await request("/auth/me", { method: "GET", auth: true });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   async requestPasswordReset(email: string) {
     await request("/auth/password-reset/request", { method: "POST", body: { email } });
   },
@@ -252,6 +346,313 @@ export const authApi = {
   },
 
   clearStoredSession: clearStoredTokens,
+};
+
+/**
+ * Builds a client for one backend CRUD module (backend/src/lib/
+ * crudModuleFactory.ts). The shape matches ApiCrudModule in
+ * hooks/useApiData.ts, so a module built this way drops straight into
+ * useApiTable/useApiMutations with no adapter.
+ *
+ * rawRequest already unwraps the response envelope, so `data` here is the
+ * payload itself; it is re-wrapped as `{ data }` to match the hook contract.
+ */
+export function createCrudApi<T>(resource: string) {
+  const base = `/${resource}`;
+
+  return {
+    async list(): Promise<{ data: T[] }> {
+      return { data: (await request(base, { method: "GET", auth: true })) as T[] };
+    },
+    async get(id: string): Promise<{ data: T }> {
+      return { data: (await request(`${base}/${id}`, { method: "GET", auth: true })) as T };
+    },
+    async create(input: Partial<T>): Promise<{ data: T }> {
+      return { data: (await request(base, { method: "POST", body: input, auth: true })) as T };
+    },
+    async update(id: string, input: Partial<T>): Promise<{ data: T }> {
+      return {
+        data: (await request(`${base}/${id}`, { method: "PATCH", body: input, auth: true })) as T,
+      };
+    },
+    async remove(id: string): Promise<void> {
+      await request(`${base}/${id}`, { method: "DELETE", auth: true });
+    },
+  };
+}
+
+export const categoriesApi = createCrudApi<Record<string, unknown>>("categories");
+export const brandsApi = createCrudApi<Record<string, unknown>>("brands");
+export const productsApi = createCrudApi<Record<string, unknown>>("products");
+export const customersApi = createCrudApi<Record<string, unknown>>("customers");
+export const suppliersApi = createCrudApi<Record<string, unknown>>("suppliers");
+export const expensesApi = createCrudApi<Record<string, unknown>>("expenses");
+export const unitsApi = createCrudApi<Record<string, unknown>>("units");
+export const branchesApi = createCrudApi<Record<string, unknown>>("branches");
+
+/**
+ * Sales are transactional, not CRUD: a checkout writes a header, its line
+ * items and a stock movement per product atomically, and there is no update
+ * or delete. Only the operations the backend actually offers are exposed.
+ */
+/**
+ * A sale as the API returns it. Snake_case because that is the wire format,
+ * and loose about the rest — a sale carries EBM and cash-drawer fields the
+ * till reads but does not compute.
+ */
+export type SaleRecord = {
+  id: string;
+  invoice_no: string;
+  receipt_no: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_tin: string | null;
+  items: number;
+  subtotal: string | number;
+  tax: string | number;
+  discount: string | number;
+  total: string | number;
+  paid: string | number;
+  due: string | number;
+  change_given: string | number;
+  cost_total: string | number;
+  gross_profit: string | number;
+  payment_method: string | null;
+  momo_number: string | null;
+  momo_code: string | null;
+  status: string | null;
+  branch: string | null;
+  cashier: string | null;
+  sale_items: Record<string, unknown>[];
+} & Record<string, unknown>;
+
+export const salesApi = {
+  async list(): Promise<{ data: Record<string, unknown>[] }> {
+    return { data: (await request("/sales", { method: "GET", auth: true })) as Record<string, unknown>[] };
+  },
+  async get(id: string) {
+    return request(`/sales/${id}`, { method: "GET", auth: true });
+  },
+  /**
+   * Completes a sale.
+   *
+   * Everything that decides money is derived on the server: prices and costs
+   * come from the catalogue, totals from the lines, and stock comes off inside
+   * the same transaction. Sending a total here has no effect — deliberately,
+   * since a till that can name its own numbers can sell a television for one
+   * franc. The response is the authoritative sale, including its invoice
+   * number, computed change and margin.
+   */
+  async checkout(input: {
+    items: {
+      product_id: string;
+      quantity: number;
+      unit_price?: number;
+      unit_cost?: number;
+      discount?: number;
+      tax_rate?: number;
+      batch_id?: string | null;
+    }[];
+    customer_name?: string | null;
+    customer_phone?: string | null;
+    customer_tin?: string | null;
+    payment_method?: string;
+    momo_number?: string | null;
+    momo_code?: string | null;
+    paid?: number;
+    discount?: number;
+    branch?: string | null;
+    cashier?: string | null;
+    receipt_no?: string | null;
+    notes?: string | null;
+    /**
+     * Idempotency key. Pick one when the sale is first attempted and reuse it
+     * for every retry of that same sale — including when a failed online
+     * attempt is queued offline and synced later. The server records the sale
+     * once and answers a replay with the original, so retrying is always safe
+     * and never doubles a sale.
+     */
+    client_request_id?: string;
+    /** A sale taken on a disconnected till. Permitted to drive stock negative. */
+    offline?: boolean;
+    /** When the till completed the sale, if that is not now. */
+    completed_at?: string;
+  }): Promise<SaleRecord> {
+    return request("/sales", { method: "POST", body: input, auth: true }) as Promise<SaleRecord>;
+  },
+};
+
+/**
+ * Goods received from a supplier. Transactional like a sale and idempotent on
+ * the same key, because a delivery counted twice inflates stock exactly as
+ * surely as a sale counted twice deflates it.
+ */
+export const purchasesApi = {
+  async list(): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request("/purchases", { method: "GET", auth: true })) as Record<string, unknown>[],
+    };
+  },
+  async get(id: string) {
+    return request(`/purchases/${id}`, { method: "GET", auth: true });
+  },
+  async create(input: {
+    items: { product_id: string; quantity: number; unit_cost?: number }[];
+    supplier_id?: string | null;
+    supplier_name?: string | null;
+    purchase_no?: string | null;
+    discount?: number;
+    tax?: number;
+    status?: string;
+    payment_status?: string;
+    notes?: string | null;
+    client_request_id?: string;
+    offline?: boolean;
+    completed_at?: string;
+  }) {
+    return request("/purchases", { method: "POST", body: input, auth: true });
+  },
+};
+
+/**
+ * The stock ledger. Read-only by design: movements are written only by the
+ * code that actually moves stock, inside the transaction that moved it. A
+ * ledger anyone can post to is not a ledger.
+ */
+export const stockMovementsApi = {
+  async list(params: { product_id?: string; movement_type?: string; limit?: number } = {}) {
+    const query = new URLSearchParams();
+    if (params.product_id) query.set("product_id", params.product_id);
+    if (params.movement_type) query.set("movement_type", params.movement_type);
+    if (params.limit) query.set("limit", String(params.limit));
+
+    const suffix = query.toString() ? `?${query}` : "";
+    return {
+      data: (await request(`/stock-movements${suffix}`, {
+        method: "GET",
+        auth: true,
+      })) as Record<string, unknown>[],
+    };
+  },
+};
+
+/**
+ * Workspace membership: who is here, what they may do, and who changed it.
+ *
+ * Every write is an authority change, so the server enforces two rules this
+ * client cannot soften: you may not act on someone who outranks you, and you
+ * may not hand out a role at or above your own.
+ */
+export const usersApi = {
+  async members(): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request("/users/members", { method: "GET", auth: true })) as Record<string, unknown>[],
+    };
+  },
+  async assignRole(userId: string, role: string) {
+    return request(`/users/members/${userId}/role`, { method: "PATCH", body: { role }, auth: true });
+  },
+  async removeMember(userId: string) {
+    return request(`/users/members/${userId}`, { method: "DELETE", auth: true });
+  },
+  /**
+   * Where a member works and whether their membership is live.
+   *
+   * Separate from assignRole because it is a separate decision: moving a
+   * cashier between shops changes nothing about what they may do. Pass
+   * `branch_id: "all"` for workspace-wide.
+   */
+  async updateMemberProfile(
+    userId: string,
+    input: { branch_id?: string | null; department?: string | null; status?: string }
+  ) {
+    return request(`/users/members/${userId}/profile`, {
+      method: "PATCH",
+      body: input,
+      auth: true,
+    });
+  },
+
+  /** The whole matrix — defaults, this workspace's overrides, and the result. */
+  async permissionMatrix() {
+    return request("/users/permissions", { method: "GET", auth: true }) as Promise<{
+      catalogue: string[];
+      roles: {
+        role: string;
+        defaults: string[];
+        effective: string[];
+        customised: { permission: string; granted: boolean }[];
+      }[];
+    }>;
+  },
+  async setPermission(role: string, permission: string, granted: boolean) {
+    return request("/users/permissions", {
+      method: "PUT",
+      body: { role, permission, granted },
+      auth: true,
+    });
+  },
+
+  async invites(): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request("/users/invites", { method: "GET", auth: true })) as Record<string, unknown>[],
+    };
+  },
+  /** The token comes back exactly once — only its hash is stored. */
+  async invite(email: string, role: string) {
+    return request("/users/invites", { method: "POST", body: { email, role }, auth: true }) as Promise<{
+      id: string;
+      email: string;
+      role: string;
+      token: string;
+      expires_at: string;
+    }>;
+  },
+  async cancelInvite(id: string) {
+    return request(`/users/invites/${id}`, { method: "DELETE", auth: true });
+  },
+
+  async activity(limit = 200): Promise<{ data: Record<string, unknown>[] }> {
+    return {
+      data: (await request(`/users/activity?limit=${limit}`, {
+        method: "GET",
+        auth: true,
+      })) as Record<string, unknown>[],
+    };
+  },
+
+  /**
+   * What the signed-in caller may do — the same answer the server enforces, so
+   * the UI hides what would be refused rather than guessing. Cached for
+   * offline use; see lib/permissions.ts.
+   */
+  async myPermissions() {
+    return request("/users/me/permissions", { method: "GET", auth: true }) as Promise<{
+      role: string | null;
+      permissions: string[];
+    }>;
+  },
+};
+
+/** The signed-in user's own profile — one row, addressed by the token. */
+export const profileApi = {
+  async get() {
+    return request("/profile", { method: "GET", auth: true }) as Promise<{
+      id: string;
+      display_name: string | null;
+      phone: string | null;
+      language: string;
+      avatar_url: string | null;
+    }>;
+  },
+  async update(input: {
+    display_name?: string;
+    phone?: string | null;
+    avatar_url?: string | null;
+    language?: string;
+  }) {
+    return request("/profile", { method: "PATCH", body: input, auth: true });
+  },
 };
 
 export const workspaceApi = {

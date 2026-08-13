@@ -1,5 +1,18 @@
 import { prisma } from "../../db/prisma";
-import { sendPasswordResetEmail } from "../../lib/email";
+import { loadPermissions } from "../../middleware/requirePermission";
+import {
+  decryptNullable,
+  emailBlindIndex,
+  encrypt,
+  encryptNullable,
+  phoneBlindIndexNullable,
+} from "../../lib/crypto";
+import {
+  sendAccountCreatedEmail,
+  sendPasswordChangedEmail,
+  sendPasswordResetEmail,
+  sendSubscriptionActivatedEmail,
+} from "../../lib/email/notifications";
 import { HttpError } from "../../lib/httpError";
 import {
   generatePasswordResetToken,
@@ -29,26 +42,52 @@ async function primaryMembership(userId: string) {
   });
 }
 
-function publicUser(user: { id: string; email: string; displayName: string | null }) {
-  return { id: user.id, email: user.email, displayName: user.displayName };
+type StoredUser = { id: string; emailEncrypted: string; displayNameEncrypted: string | null };
+
+/**
+ * The only place a User row is turned back into readable fields. Everything
+ * that returns a user to a caller goes through here, so decryption is not
+ * scattered across the module.
+ */
+function publicUser(user: StoredUser) {
+  return {
+    id: user.id,
+    email: decryptNullable(user.emailEncrypted),
+    displayName: decryptNullable(user.displayNameEncrypted),
+  };
 }
 
 export async function signup(input: SignupInput) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  const emailHash = emailBlindIndex(input.email);
+
+  const existing = await prisma.user.findUnique({ where: { emailHash } });
   if (existing) {
-    throw HttpError.conflict("An account with this email already exists");
+    throw HttpError.conflict("auth.emailExists");
+  }
+
+  // The phone is unique across profiles, so reject a duplicate here with a
+  // clear 409 rather than letting the database constraint surface as a 500.
+  const phoneHash = phoneBlindIndexNullable(input.businessPhone);
+  if (phoneHash) {
+    const phoneTaken = await prisma.profile.findUnique({ where: { phoneHash } });
+    if (phoneTaken) {
+      throw HttpError.conflict("auth.phoneExists");
+    }
   }
 
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
     data: {
-      email: input.email,
+      emailEncrypted: encrypt(input.email),
+      emailHash,
       passwordHash,
-      displayName: input.displayName,
+      displayNameEncrypted: encrypt(input.displayName),
       metadata: {
         businessName: input.businessName,
-        businessPhone: input.businessPhone ?? null,
+        // Business phone is PII too, so it is encrypted inside the metadata
+        // blob rather than sitting in the clear in JSON.
+        businessPhone: encryptNullable(input.businessPhone),
         businessLocation: input.businessLocation ?? null,
         businessType: input.businessType ?? null,
         teamSize: input.teamSize ?? null,
@@ -57,7 +96,13 @@ export async function signup(input: SignupInput) {
   });
 
   await prisma.profile.create({
-    data: { id: user.id, displayName: input.displayName, language: input.language || "en" },
+    data: {
+      id: user.id,
+      displayNameEncrypted: encrypt(input.displayName),
+      phoneEncrypted: encryptNullable(input.businessPhone),
+      phoneHash,
+      language: input.language || "en",
+    },
   });
 
   const { tenantId } = await createPendingWorkspace({
@@ -77,18 +122,36 @@ export async function signup(input: SignupInput) {
 
   const tokens = await issueTokenPair(user, tenantId, "owner");
 
+  // Fire-and-forget: a delivery failure must not fail a signup that has
+  // already committed. sendNotification swallows and logs its own errors.
+  const language = input.language ?? "en";
+  void sendAccountCreatedEmail({
+    to: input.email,
+    name: input.displayName,
+    workspace: input.businessName,
+    language,
+  });
+  void sendSubscriptionActivatedEmail({
+    to: input.email,
+    name: input.displayName,
+    workspace: input.businessName,
+    plan: input.planCode,
+    cycle: input.billingCycle,
+    language,
+  });
+
   return { user: publicUser(user), tenantId, ...tokens };
 }
 
 export async function login(input: LoginInput) {
-  const user = await prisma.user.findUnique({ where: { email: input.email } });
+  const user = await prisma.user.findUnique({ where: { emailHash: emailBlindIndex(input.email) } });
   if (!user) {
-    throw HttpError.unauthorized("Invalid email or password");
+    throw HttpError.unauthorized("auth.invalidCredentials", { code: "invalid_credentials" });
   }
 
   const valid = await verifyPassword(input.password, user.passwordHash);
   if (!valid) {
-    throw HttpError.unauthorized("Invalid email or password");
+    throw HttpError.unauthorized("auth.invalidCredentials", { code: "invalid_credentials" });
   }
 
   const membership = await primaryMembership(user.id);
@@ -106,14 +169,14 @@ export async function refresh(refreshToken: string) {
   const stored = await prisma.refreshToken.findFirst({ where: { tokenHash } });
 
   if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-    throw HttpError.unauthorized("Invalid or expired refresh token");
+    throw HttpError.unauthorized("auth.invalidRefreshToken", { code: "invalid_refresh_token" });
   }
 
   await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
 
   const user = await prisma.user.findUnique({ where: { id: stored.userId } });
   if (!user) {
-    throw HttpError.unauthorized("Invalid or expired refresh token");
+    throw HttpError.unauthorized("auth.invalidRefreshToken", { code: "invalid_refresh_token" });
   }
 
   const membership = await primaryMembership(user.id);
@@ -131,10 +194,15 @@ export async function logout(refreshToken: string) {
 export async function me(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
-    throw HttpError.unauthorized("User not found");
+    throw HttpError.unauthorized("auth.invalidToken", { code: "user_not_found" });
   }
 
   const membership = await primaryMembership(userId);
+
+  const permissions = membership?.tenantId
+    ? (await loadPermissions(userId, membership.tenantId)).permissions
+    : [];
+
   const subscription = membership
     ? await prisma.tenantSubscription.findFirst({
         where: { tenantId: membership.tenantId },
@@ -159,9 +227,16 @@ export async function me(userId: string) {
         }
       : null,
     role: membership?.role ?? null,
-    // Fine-grained role_permissions loading is out of Phase 1 scope (that
-    // table isn't modeled yet - see Phase 5 in the migration roadmap).
-    permissions: [] as string[],
+    /*
+     * The permissions the server will actually enforce for this caller, so the
+     * client can hide what would be refused rather than guessing. This was an
+     * empty array with a note saying it was out of scope, which left the whole
+     * frontend permission model — RoleGate, canViewModule — fed by nothing.
+     *
+     * Also what the desktop app caches for offline use: with no connection it
+     * cannot ask, so it must already know.
+     */
+    permissions,
     subscription: subscription
       ? {
           plan_code: subscription.planCode,
@@ -177,13 +252,21 @@ export async function me(userId: string) {
 }
 
 export async function requestPasswordReset(email: string) {
-  const user = await prisma.user.findUnique({ where: { email }, include: { profile: true } });
+  const user = await prisma.user.findUnique({
+    where: { emailHash: emailBlindIndex(email) },
+    include: { profile: true },
+  });
   if (user) {
     const reset = generatePasswordResetToken();
     await prisma.passwordResetToken.create({
       data: { userId: user.id, tokenHash: reset.hash, expiresAt: reset.expiresAt },
     });
-    await sendPasswordResetEmail(email, reset.token, user.profile?.language);
+    await sendPasswordResetEmail({
+      to: email,
+      name: decryptNullable(user.displayNameEncrypted) ?? email,
+      resetToken: reset.token,
+      language: user.profile?.language,
+    });
   }
   // Always the same response, whether or not the account exists.
 }
@@ -193,7 +276,7 @@ export async function completePasswordReset(token: string, newPassword: string) 
   const stored = await prisma.passwordResetToken.findFirst({ where: { tokenHash } });
 
   if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
-    throw HttpError.badRequest("Invalid or expired reset token");
+    throw HttpError.badRequest("auth.invalidResetToken", { code: "invalid_reset_token" });
   }
 
   const passwordHash = await hashPassword(newPassword);
@@ -205,4 +288,21 @@ export async function completePasswordReset(token: string, newPassword: string) 
       data: { revokedAt: new Date() },
     }),
   ]);
+
+  // Tell the account holder their password changed — the signal that matters
+  // if someone else did it.
+  const owner = await prisma.user.findUnique({
+    where: { id: stored.userId },
+    include: { profile: true },
+  });
+  if (owner) {
+    const email = decryptNullable(owner.emailEncrypted);
+    if (email) {
+      void sendPasswordChangedEmail({
+        to: email,
+        name: decryptNullable(owner.displayNameEncrypted) ?? email,
+        language: owner.profile?.language,
+      });
+    }
+  }
 }
