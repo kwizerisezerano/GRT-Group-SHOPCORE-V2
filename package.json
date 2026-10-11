@@ -1,0 +1,38 @@
+{
+  "name": "grt-group-shopcore-v2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ShopCore ERP repository root. frontend/ and backend/ stay independent npm projects with their own lockfiles; this package only delegates to them.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "postinstall": "npm run install:all",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "cd backend && npm install",
+    "dev": "node scripts/dev.mjs",
+    "dev:reset": "node scripts/dev.mjs --reset",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start:backend": "cd backend && npm run start",
+    "preview": "cd frontend && npm run preview",
+    "typecheck": "cd frontend && npm run typecheck && cd ../backend && npm run typecheck",
+    "lint": "cd frontend && npm run lint",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "cd backend && npm run test",
+    "test:e2e": "cd frontend && npm run test:e2e",
+    "prisma:generate": "cd backend && npm run prisma:generate",
+    "prisma:migrate": "cd backend && npm run prisma:migrate:deploy",
+    "prisma:seed": "cd backend && npm run prisma:seed",
+    "prisma:studio": "cd backend && npm run prisma:studio",
+    "db:setup": "npm run prisma:migrate && npm run prisma:seed",
+    "tauri:dev": "cd frontend && npm run tauri:dev",
+    "tauri:build": "cd frontend && npm run tauri:build",
+    "test:system": "node scripts/test-system.mjs"
+  }
+}

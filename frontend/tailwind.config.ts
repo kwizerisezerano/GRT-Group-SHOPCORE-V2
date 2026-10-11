@@ -1,0 +1,266 @@
+import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+
+export default {
+  darkMode: ["class"],
+
+  content: [
+    "./index.html",
+    "./pages/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+
+  prefix: "",
+
+  theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
+
+    extend: {
+      fontFamily: {
+        sans: [
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "sans-serif",
+        ],
+
+        mono: [
+          "Roboto Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Consolas",
+          "monospace",
+        ],
+      },
+
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          foreground:
+            "hsl(var(--surface-foreground))",
+          elevated:
+            "hsl(var(--surface-elevated))",
+        },
+
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground:
+            "hsl(var(--primary-foreground))",
+        },
+
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground:
+            "hsl(var(--secondary-foreground))",
+        },
+
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground:
+            "hsl(var(--destructive-foreground))",
+        },
+
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground:
+            "hsl(var(--muted-foreground))",
+        },
+
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground:
+            "hsl(var(--accent-foreground))",
+        },
+
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground:
+            "hsl(var(--success-foreground))",
+        },
+
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground:
+            "hsl(var(--warning-foreground))",
+        },
+
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground:
+            "hsl(var(--popover-foreground))",
+        },
+
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground:
+            "hsl(var(--card-foreground))",
+        },
+
+        sidebar: {
+          DEFAULT:
+            "hsl(var(--sidebar-background))",
+          foreground:
+            "hsl(var(--sidebar-foreground))",
+          primary:
+            "hsl(var(--sidebar-primary))",
+          "primary-foreground":
+            "hsl(var(--sidebar-primary-foreground))",
+          accent:
+            "hsl(var(--sidebar-accent))",
+          "accent-foreground":
+            "hsl(var(--sidebar-accent-foreground))",
+          border:
+            "hsl(var(--sidebar-border))",
+          ring:
+            "hsl(var(--sidebar-ring))",
+          muted:
+            "hsl(var(--sidebar-muted))",
+        },
+
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
+        },
+      },
+
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+
+      keyframes: {
+        "accordion-down": {
+          from: {
+            height: "0",
+          },
+          to: {
+            height:
+              "var(--radix-accordion-content-height)",
+          },
+        },
+
+        "accordion-up": {
+          from: {
+            height:
+              "var(--radix-accordion-content-height)",
+          },
+          to: {
+            height: "0",
+          },
+        },
+
+        "slide-in-right": {
+          from: {
+            transform: "translateX(100%)",
+            opacity: "0",
+          },
+          to: {
+            transform: "translateX(0)",
+            opacity: "1",
+          },
+        },
+
+        "fade-in": {
+          from: {
+            opacity: "0",
+          },
+          to: {
+            opacity: "1",
+          },
+        },
+
+        // The workspace's entrance move: content arrives from just below its
+        // resting place rather than appearing. Twelve pixels is deliberately
+        // small - far enough to read as motion, near enough that a dashboard
+        // of thirty panels does not look like it is being poured onto screen.
+        rise: {
+          from: {
+            opacity: "0",
+            transform: "translateY(12px)",
+          },
+          to: {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
+
+        "scale-in": {
+          from: {
+            opacity: "0",
+            transform: "scale(0.96)",
+          },
+          to: {
+            opacity: "1",
+            transform: "scale(1)",
+          },
+        },
+
+        // For skeletons: a highlight sweeping across a placeholder reads as
+        // "loading" in a way a pulsing block does not.
+        shimmer: {
+          from: {
+            backgroundPosition: "-200% 0",
+          },
+          to: {
+            backgroundPosition: "200% 0",
+          },
+        },
+      },
+
+      animation: {
+        "accordion-down":
+          "accordion-down 0.2s ease-out",
+
+        "accordion-up":
+          "accordion-up 0.2s ease-out",
+
+        "slide-in-right":
+          "slide-in-right 0.2s ease-out",
+
+        "fade-in":
+          "fade-in 0.15s ease-out",
+
+        /*
+         * cubic-bezier(0.22, 1, 0.36, 1) throughout - a strong ease-out that
+         * covers most of the distance immediately and settles. Motion that
+         * decelerates reads as a thing arriving; linear or ease-in-out reads
+         * as an animation playing.
+         *
+         * "both" so the element holds the from-state before it starts, which
+         * is what makes a staggered delay work instead of flashing at full
+         * opacity and then animating.
+         */
+        rise:
+          "rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+
+        "scale-in":
+          "scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
+
+        shimmer:
+          "shimmer 1.8s ease-in-out infinite",
+      },
+    },
+  },
+
+  plugins: [tailwindcssAnimate],
+} satisfies Config;

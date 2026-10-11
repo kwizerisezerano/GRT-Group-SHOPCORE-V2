@@ -1,0 +1,756 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   SHOPCORE GLOBAL DESIGN TOKENS
+   ========================================================= */
+
+@layer base {
+  :root,
+  .light {
+    color-scheme: light;
+
+    --background: 240 25% 98%;
+    --foreground: 243 35% 14%;
+
+    --surface: 240 28% 96%;
+    --surface-foreground: 243 35% 14%;
+    --surface-elevated: 0 0% 100%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 243 35% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 243 35% 14%;
+
+    --primary: 230 80% 38%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 30% 95.5%;
+    --secondary-foreground: 230 35% 16%;
+
+    --muted: 230 20% 94.5%;
+    --muted-foreground: 230 10% 45%;
+
+    --accent: 205 85% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 156 72% 34%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 95% 48%;
+    --warning-foreground: 222 35% 12%;
+
+    --border: 230 18% 90%;
+    --input: 230 18% 90%;
+    --ring: 230 80% 45%;
+
+    --radius: 0.85rem;
+
+    /* Same hue as --sidebar-background (#051251); the gradient is a shade
+       shift, not a hue shift, so `.brand-banner` reads as one solid brand
+       colour rather than a two-tone poster gradient. */
+    --brand-gradient-from: 230 82% 24%;
+    --brand-gradient-to: 230 78% 40%;
+
+    --sidebar-background: 230 88% 17%;
+    --sidebar-foreground: 230 30% 90%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 230 88% 15%;
+    --sidebar-accent: 230 45% 24%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 230 40% 24%;
+    --sidebar-ring: 230 80% 55%;
+    --sidebar-muted: 230 20% 68%;
+
+    --chart-1: 230 75% 50%;
+    --chart-2: 156 72% 38%;
+    --chart-3: 32 95% 48%;
+    --chart-4: 0 72% 51%;
+    --chart-5: 190 70% 42%;
+
+    --font-sans:
+      "Inter",
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+
+    --font-mono:
+      "Roboto Mono",
+      ui-monospace,
+      SFMono-Regular,
+      Consolas,
+      "Liberation Mono",
+      monospace;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --background: 230 34% 7%;
+    --foreground: 230 25% 95%;
+
+    --surface: 230 30% 10%;
+    --surface-foreground: 230 25% 95%;
+    --surface-elevated: 230 26% 13%;
+
+    --card: 230 26% 12%;
+    --card-foreground: 230 25% 95%;
+
+    --popover: 230 26% 12%;
+    --popover-foreground: 230 25% 95%;
+
+    --primary: 216 84% 62%;
+    --primary-foreground: 216 45% 10%;
+
+    --secondary: 230 22% 17%;
+    --secondary-foreground: 230 25% 95%;
+
+    --muted: 230 20% 17%;
+    --muted-foreground: 230 14% 68%;
+
+    --accent: 205 85% 62%;
+    --accent-foreground: 230 34% 9%;
+
+    --destructive: 0 68% 57%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 156 65% 46%;
+    --success-foreground: 230 34% 9%;
+
+    --warning: 35 92% 55%;
+    --warning-foreground: 230 34% 9%;
+
+    --border: 230 16% 22%;
+    --input: 230 16% 22%;
+    --ring: 216 84% 62%;
+
+    --brand-gradient-from: 224 72% 20%;
+    --brand-gradient-to: 218 74% 34%;
+
+    --sidebar-background: 230 45% 5%;
+    --sidebar-foreground: 230 22% 82%;
+    --sidebar-primary: 216 84% 62%;
+    --sidebar-primary-foreground: 230 34% 9%;
+    --sidebar-accent: 230 25% 14%;
+    --sidebar-accent-foreground: 230 25% 95%;
+    --sidebar-border: 230 20% 16%;
+    --sidebar-ring: 216 80% 60%;
+    --sidebar-muted: 230 14% 60%;
+
+    --chart-1: 216 84% 62%;
+    --chart-2: 156 65% 46%;
+    --chart-3: 35 92% 55%;
+    --chart-4: 0 68% 57%;
+    --chart-5: 190 65% 55%;
+  }
+}
+
+/* =========================================================
+   GLOBAL BASE STYLES
+   ========================================================= */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    min-height: 100%;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    transition:
+      background-color 180ms ease,
+      color 180ms ease;
+  }
+
+  #root {
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  button,
+  select {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  ::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: hsl(var(--border));
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.4);
+  }
+}
+
+/* =========================================================
+   SHARED SHOPCORE COMPONENT CLASSES
+   ========================================================= */
+
+/*
+ * Scroll reveals never fire when there is no scrolling — printing, and
+ * headless full-page captures. Content that depends on an IntersectionObserver
+ * to become visible must not be able to print as a blank page.
+ */
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@layer components {
+  .font-data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-page {
+    min-height: 100%;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .app-surface {
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+
+  .app-surface-muted {
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--surface));
+    color: hsl(var(--surface-foreground));
+  }
+
+  .app-surface-elevated {
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--surface-elevated));
+    color: hsl(var(--foreground));
+    box-shadow:
+      0 1px 2px 0 rgb(15 23 42 / 0.05),
+      0 1px 3px 0 rgb(15 23 42 / 0.08);
+  }
+
+  .kpi-card {
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    padding: 1.25rem;
+    box-shadow:
+      0 1px 2px 0 rgb(15 23 42 / 0.04),
+      0 1px 3px 0 rgb(15 23 42 / 0.06);
+    transition:
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .brand-gradient {
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--brand-gradient-from)),
+      hsl(var(--brand-gradient-to))
+    );
+    color: hsl(0 0% 100%);
+  }
+
+  .brand-banner {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--brand-gradient-from)),
+      hsl(var(--brand-gradient-to))
+    );
+    color: hsl(0 0% 100%);
+    box-shadow:
+      0 20px 45px -20px hsl(var(--brand-gradient-from) / 0.55);
+  }
+
+  .kpi-card:hover {
+    box-shadow:
+      0 8px 24px rgb(15 23 42 / 0.08),
+      0 2px 6px rgb(15 23 42 / 0.06);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .page-title {
+    margin: 0;
+    color: hsl(var(--foreground));
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+    letter-spacing: -0.025em;
+  }
+
+  .page-description {
+    margin-top: 0.125rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: hsl(var(--foreground));
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .data-table th {
+    padding: 0.75rem 1rem;
+    background-color: hsl(var(--muted) / 0.5);
+    color: hsl(var(--muted-foreground));
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .data-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .data-table tbody tr {
+    transition: background-color 150ms ease;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: hsl(var(--muted) / 0.35);
+  }
+}
+
+/* =========================================================
+   THEME-AWARE UTILITIES
+   ========================================================= */
+
+@layer utilities {
+  .theme-transition {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      fill 180ms ease,
+      stroke 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .surface-background {
+    background-color: hsl(var(--background));
+  }
+
+  .surface-card {
+    background-color: hsl(var(--card));
+  }
+
+  .surface-muted {
+    background-color: hsl(var(--surface));
+  }
+
+  .surface-elevated {
+    background-color: hsl(var(--surface-elevated));
+  }
+
+  .text-theme-primary {
+    color: hsl(var(--foreground));
+  }
+
+  .text-theme-muted {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .border-theme {
+    border-color: hsl(var(--border));
+  }
+}
+
+/* =========================================================
+   LEGACY LIGHT-UTILITY THEME BRIDGE
+
+   Older operational screens predate the semantic color tokens above.
+   These mappings let them participate in the same persisted dark mode
+   without changing their layout or business behavior.
+   ========================================================= */
+
+@layer utilities {
+  .dark .bg-white {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-gray-50,
+  .dark [class*="bg-[#f4f6f9]"],
+  .dark [class*="bg-[#f6f7fb]"],
+  .dark [class*="bg-[#f8fafc]"],
+  .dark [class*="bg-[#cfd5db]"],
+  .dark [class*="bg-[#d7dce2]"] {
+    background-color: hsl(var(--background)) !important;
+  }
+
+  .dark .bg-slate-100,
+  .dark .bg-gray-100 {
+    background-color: hsl(var(--muted)) !important;
+  }
+
+  .dark .bg-slate-200,
+  .dark .bg-gray-200 {
+    background-color: hsl(var(--border)) !important;
+  }
+
+  .dark [class*="bg-white/"] {
+    background-color: hsl(var(--card) / 0.92) !important;
+  }
+
+  .dark [class*="bg-slate-50/"],
+  .dark [class*="bg-gray-50/"] {
+    background-color: hsl(var(--surface) / 0.9) !important;
+  }
+
+  .dark .text-slate-950,
+  .dark .text-slate-900,
+  .dark .text-slate-800,
+  .dark .text-gray-950,
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .dark .text-slate-700,
+  .dark .text-slate-600,
+  .dark .text-slate-500,
+  .dark .text-slate-400,
+  .dark .text-gray-700,
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .dark .border-slate-100,
+  .dark .border-slate-200,
+  .dark .border-slate-300,
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300,
+  .dark [class*="border-slate-200/"],
+  .dark [class*="border-gray-200/"] {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  .dark .from-white {
+    --tw-gradient-from: hsl(var(--card)) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(var(--card) / 0) var(--tw-gradient-to-position) !important;
+  }
+
+  .dark .from-slate-50,
+  .dark .via-slate-50 {
+    --tw-gradient-from: hsl(var(--surface)) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(var(--surface) / 0) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--surface)) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+  }
+
+  .dark .to-white {
+    --tw-gradient-to: hsl(var(--card)) var(--tw-gradient-to-position) !important;
+  }
+
+  .dark .to-slate-100 {
+    --tw-gradient-to: hsl(var(--muted)) var(--tw-gradient-to-position) !important;
+  }
+
+  .dark .bg-blue-50 {
+    background-color: rgb(37 99 235 / 0.14) !important;
+  }
+
+  .dark .bg-cyan-50 {
+    background-color: rgb(6 182 212 / 0.12) !important;
+  }
+
+  .dark .bg-emerald-50 {
+    background-color: rgb(16 185 129 / 0.12) !important;
+  }
+
+  .dark .bg-violet-50 {
+    background-color: rgb(124 58 237 / 0.14) !important;
+  }
+
+  .dark .bg-orange-50,
+  .dark .bg-amber-50 {
+    background-color: rgb(249 115 22 / 0.12) !important;
+  }
+
+  .dark .bg-rose-50,
+  .dark .bg-red-50 {
+    background-color: rgb(244 63 94 / 0.12) !important;
+  }
+
+  .dark .text-blue-700,
+  .dark .text-blue-800,
+  .dark .text-blue-900 {
+    color: rgb(147 197 253) !important;
+  }
+
+  .dark .text-cyan-700,
+  .dark .text-cyan-800,
+  .dark .text-cyan-900 {
+    color: rgb(103 232 249) !important;
+  }
+
+  .dark .text-emerald-700,
+  .dark .text-emerald-800,
+  .dark .text-emerald-900,
+  .dark .text-emerald-950 {
+    color: rgb(110 231 183) !important;
+  }
+
+  .dark .text-violet-700,
+  .dark .text-violet-800,
+  .dark .text-violet-900 {
+    color: rgb(196 181 253) !important;
+  }
+
+  .dark .text-orange-700,
+  .dark .text-orange-800,
+  .dark .text-orange-900,
+  .dark .text-orange-950,
+  .dark .text-amber-700,
+  .dark .text-amber-800,
+  .dark .text-amber-900,
+  .dark .text-amber-950 {
+    color: rgb(253 186 116) !important;
+  }
+
+  .dark .text-rose-700,
+  .dark .text-rose-800,
+  .dark .text-rose-900,
+  .dark .text-rose-950,
+  .dark .text-red-700,
+  .dark .text-red-800,
+  .dark .text-red-900,
+  .dark .text-red-950 {
+    color: rgb(253 164 175) !important;
+  }
+
+  .dark .border-blue-200,
+  .dark .border-cyan-200,
+  .dark .border-emerald-200,
+  .dark .border-violet-200,
+  .dark .border-orange-200,
+  .dark .border-amber-200,
+  .dark .border-rose-200,
+  .dark .border-red-200,
+  .dark .border-indigo-200,
+  .dark .border-green-200,
+  .dark .border-teal-200,
+  .dark .border-sky-200,
+  .dark .border-purple-200 {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  /* Remaining status/brand tints, so a light-tinted panel never stays light
+     on a dark page. Backgrounds go translucent; the dark text they were
+     paired with is lifted to a readable light shade of the same hue. */
+  .dark .bg-indigo-50 {
+    background-color: rgb(99 102 241 / 0.14) !important;
+  }
+
+  .dark .bg-green-50,
+  .dark .bg-teal-50 {
+    background-color: rgb(16 185 129 / 0.12) !important;
+  }
+
+  .dark .bg-sky-50 {
+    background-color: rgb(14 165 233 / 0.12) !important;
+  }
+
+  .dark .bg-purple-50,
+  .dark .bg-fuchsia-50,
+  .dark .bg-pink-50 {
+    background-color: rgb(168 85 247 / 0.14) !important;
+  }
+
+  .dark .text-indigo-700,
+  .dark .text-indigo-800,
+  .dark .text-indigo-900,
+  .dark .text-indigo-950 {
+    color: rgb(165 180 252) !important;
+  }
+
+  .dark .text-green-700,
+  .dark .text-green-800,
+  .dark .text-green-900,
+  .dark .text-green-950,
+  .dark .text-teal-700,
+  .dark .text-teal-800,
+  .dark .text-teal-900 {
+    color: rgb(110 231 183) !important;
+  }
+
+  .dark .text-sky-700,
+  .dark .text-sky-800 {
+    color: rgb(125 211 252) !important;
+  }
+
+  .dark .text-purple-700,
+  .dark .text-purple-800,
+  .dark .text-pink-700,
+  .dark .text-pink-800 {
+    color: rgb(216 180 254) !important;
+  }
+}
+
+/* =========================================================
+   MOTION
+   =========================================================
+
+   One entrance move for the whole workspace, applied at the
+   container rather than per element: a page marks the group
+   that should arrive in sequence, and the children inherit
+   the timing. Panels that animate individually drift out of
+   step with each other as pages grow; a stagger owned by the
+   parent cannot.
+
+   Everything here collapses to nothing under
+   prefers-reduced-motion. Vestibular disorders make this a
+   genuine accessibility requirement, not a preference. */
+
+@layer utilities {
+  @keyframes sc-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Children arrive one after another, 55ms apart. Past about
+     ten the delay stops reading as sequence and starts reading
+     as lag, so the ramp stops there and the rest come in with
+     the tenth. */
+  .stagger-children > * {
+    animation: sc-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 55ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 110ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 165ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 220ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 275ms; }
+  .stagger-children > *:nth-child(7) { animation-delay: 330ms; }
+  .stagger-children > *:nth-child(8) { animation-delay: 385ms; }
+  .stagger-children > *:nth-child(9) { animation-delay: 440ms; }
+  .stagger-children > *:nth-child(n + 10) { animation-delay: 495ms; }
+
+  /* The standard "this card is interactive" response. Shadow and
+     a 2px lift only - no scale, which reflows text and makes a
+     dense table shimmer on hover. */
+  .lift {
+    transition:
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.2s ease;
+  }
+
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -24px hsl(var(--foreground) / 0.35);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stagger-children > *,
+    .stagger-children > *:nth-child(n) {
+      animation: none !important;
+      animation-delay: 0ms !important;
+    }
+
+    .lift,
+    .lift:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

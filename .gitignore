@@ -1,0 +1,55 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Allow example environment file
+!.env.example
+
+# Supabase temporary files
+supabase/.temp/
+
+# Local-disk storage driver's file uploads (backend/src/lib/storage.ts)
+backend/uploads/
+
+# Build output
+dist/
+npm-audit.json
+# Local dev logs from scripts/dev-up.sh
+/tmp/shopcore-dev/
+
+# tsc -b incremental build state (npm run typecheck)
+*.tsbuildinfo
+
+# Playwright run artifacts, and the sessions the contract e2e tests sign in
+# with. .fixtures.json holds real access and refresh tokens for the seeded test
+# accounts; it is regenerated on every run and must never be committed.
+frontend/test-results/
+frontend/playwright-report/
+frontend/tests/.fixtures.json
